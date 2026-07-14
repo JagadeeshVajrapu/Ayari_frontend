@@ -45,6 +45,11 @@ const nextConfig: NextConfig = {
         hostname: 'placehold.co',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'darkseagreen-mosquito-341144.hostingersite.com',
+        pathname: '/uploads/**',
+      },
     ],
   },
   async headers() {
