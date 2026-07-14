@@ -71,14 +71,21 @@ export function ListingProductRow({ product, index, onQuickView }: ListingProduc
         </div>
 
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-base font-semibold text-foreground sm:text-lg">
               {formatPrice(product.price)}
             </span>
-            {product.originalPrice && (
-              <span className="text-sm text-ink-faint line-through">
-                {formatPrice(product.originalPrice)}
-              </span>
+            {product.originalPrice && product.originalPrice > product.price && (
+              <>
+                <span className="text-sm text-ink-faint">
+                  M.R.P: <span className="line-through">{formatPrice(product.originalPrice)}</span>
+                </span>
+                {product.discountPercent != null && (
+                  <span className="text-sm font-medium text-green-700 dark:text-green-400">
+                    ({product.discountPercent}% off)
+                  </span>
+                )}
+              </>
             )}
           </div>
 

@@ -1,5 +1,6 @@
 import type { ListingProduct } from '@/types/product.types';
 import { PRODUCT_PLACEHOLDER } from '@/lib/catalog-constants';
+import { resolveMediaUrl } from '@/lib/media';
 
 export interface ApiProduct {
   id: string;
@@ -15,6 +16,7 @@ export interface ApiProduct {
   categorySlug: string;
   isActive: boolean;
   isFeatured: boolean;
+  sizes?: string[];
   image: string | null;
   images: Array<{ id: string; url: string; altText: string | null; isPrimary: boolean; sortOrder?: number; cloudinaryPublicId?: string | null }>;
   featuredImages: Array<{ id: string; url: string; altText: string | null; sortOrder?: number; cloudinaryPublicId?: string | null }>;
@@ -35,21 +37,28 @@ export interface ApiCategory {
 }
 
 export function mapApiProductToListing(product: ApiProduct): ListingProduct {
-  const compareAt = product.compareAtPrice;
+  const mrp = product.compareAtPrice;
   const discountPercent =
-    compareAt && compareAt > product.price
-      ? Math.round(((compareAt - product.price) / compareAt) * 100)
-      : undefined;
+    mrp && mrp > product.price ? Math.round(((mrp - product.price) / mrp) * 100) : undefined;
 
-  const imageUrls = product.galleryImages?.length
-    ? product.galleryImages
-    : product.featuredImages.length
-      ? product.featuredImages.map((image) => image.url)
-      : product.images.length
-        ? product.images.map((image) => image.url)
-        : product.image
-          ? [product.image]
-          : [PRODUCT_PLACEHOLDER];
+  const productImageUrls = (product.images?.length
+    ? product.images.map((image) => image.url)
+    : product.image
+      ? [product.image]
+      : []
+  ).map((url) => resolveMediaUrl(url, PRODUCT_PLACEHOLDER));
+
+  const featuredImageUrls = (product.featuredImages?.length
+    ? product.featuredImages.map((image) => image.url)
+    : []
+  ).map((url) => resolveMediaUrl(url, PRODUCT_PLACEHOLDER));
+
+  const images =
+    productImageUrls.length > 0
+      ? productImageUrls
+      : featuredImageUrls.length > 0
+        ? featuredImageUrls
+        : [PRODUCT_PLACEHOLDER];
 
   const createdAt = new Date(product.createdAt);
   const isNew = Date.now() - createdAt.getTime() < 30 * 24 * 60 * 60 * 1000;
@@ -60,9 +69,10 @@ export function mapApiProductToListing(product: ApiProduct): ListingProduct {
     slug: product.slug,
     description: product.description ?? '',
     price: product.price,
-    originalPrice: compareAt ?? undefined,
-    image: imageUrls[0],
-    images: imageUrls,
+    originalPrice: mrp && mrp > product.price ? mrp : undefined,
+    image: images[0],
+    images,
+    featuredImages: featuredImageUrls,
     category: product.category,
     brand: 'AYARI',
     rating: 0,
@@ -74,6 +84,7 @@ export function mapApiProductToListing(product: ApiProduct): ListingProduct {
     discountPercent,
     createdAt: product.createdAt,
     sku: product.sku,
+    sizes: product.sizes?.length ? product.sizes : ['Free Size'],
   };
 }
 

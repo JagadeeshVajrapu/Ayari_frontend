@@ -66,14 +66,22 @@ export function QuickViewModal({ product, onClose }: QuickViewModalProps) {
                       <StarRating rating={product.rating} showValue reviewCount={product.reviewCount} />
                     </div>
 
-                    <div className="mt-4 flex items-center gap-3">
+                    <div className="mt-4 flex flex-wrap items-baseline gap-2">
                       <span className="text-xl font-semibold text-foreground">
                         {formatPrice(product.price)}
                       </span>
-                      {product.originalPrice && (
-                        <span className="text-sm text-ink-faint line-through">
-                          {formatPrice(product.originalPrice)}
-                        </span>
+                      {product.originalPrice && product.originalPrice > product.price && (
+                        <>
+                          <span className="text-sm text-ink-faint">
+                            M.R.P:{' '}
+                            <span className="line-through">{formatPrice(product.originalPrice)}</span>
+                          </span>
+                          {product.discountPercent != null && (
+                            <span className="text-sm font-medium text-green-700 dark:text-green-400">
+                              ({product.discountPercent}% off)
+                            </span>
+                          )}
+                        </>
                       )}
                     </div>
 

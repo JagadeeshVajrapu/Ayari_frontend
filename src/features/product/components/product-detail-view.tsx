@@ -60,7 +60,11 @@ export function ProductDetailView({
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
           >
-            <ProductGallery images={product.images} name={product.name} />
+            <ProductGallery
+              images={product.images}
+              featuredImages={product.featuredImages}
+              name={product.name}
+            />
           </motion.div>
 
           <motion.div

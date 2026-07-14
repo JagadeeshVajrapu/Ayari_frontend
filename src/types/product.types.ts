@@ -24,6 +24,8 @@ export interface ListingProduct {
   originalPrice?: number;
   image: string;
   images: string[];
+  /** Extra gallery images shown under the main PDP gallery */
+  featuredImages?: string[];
   category: string;
   brand: string;
   rating: number;

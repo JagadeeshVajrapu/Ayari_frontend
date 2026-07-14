@@ -142,10 +142,18 @@ export function ListingProductCard({ product, index, onQuickView }: ListingProdu
         </Link>
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold text-foreground">{formatPrice(product.price)}</span>
-          {product.originalPrice && (
-            <span className="text-xs text-ink-faint line-through">
-              {formatPrice(product.originalPrice)}
-            </span>
+          {product.originalPrice && product.originalPrice > product.price && (
+            <>
+              <span className="text-xs text-ink-faint">
+                M.R.P:{' '}
+                <span className="line-through">{formatPrice(product.originalPrice)}</span>
+              </span>
+              {product.discountPercent != null && (
+                <span className="text-xs font-medium text-green-700 dark:text-green-400">
+                  ({product.discountPercent}% off)
+                </span>
+              )}
+            </>
           )}
         </div>
       </div>

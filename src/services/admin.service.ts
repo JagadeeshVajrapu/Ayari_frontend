@@ -30,6 +30,7 @@ export interface AdminProduct {
   category: string;
   isActive: boolean;
   isFeatured: boolean;
+  sizes?: string[];
   image: string | null;
   images: AdminProductImage[];
   featuredImages: AdminProductImage[];
@@ -89,6 +90,7 @@ interface CreateProductPayload {
   categoryId: string;
   description?: string;
   compareAtPrice?: number;
+  sizes?: string[];
   productImages: ProductImagePayload[];
   featuredImages: ProductImagePayload[];
   isActive?: boolean;

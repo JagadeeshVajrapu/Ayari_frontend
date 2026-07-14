@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Minus, Plus, Heart, ShoppingBag, Zap, Share2 } from 'lucide-react';
+import { Minus, Plus, Heart, ShoppingBag, Zap } from 'lucide-react';
 import { StarRating } from '@/features/shop/components/star-rating';
-import { formatPrice, useShopStore } from '@/features/shop/stores/shop.store';
+import { useShopStore } from '@/features/shop/stores/shop.store';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { ProductPrice } from '@/components/common/product-price';
 import { ShareProduct } from './share-product';
 import type { ListingProduct } from '@/types/product.types';
 import { cn } from '@/lib/utils';
@@ -18,18 +19,28 @@ interface ProductBuyBoxProps {
 }
 
 export function ProductBuyBox({ product, compact = false, onBuyNow }: ProductBuyBoxProps) {
+  const sizes = useMemo(
+    () => (product.sizes?.length ? product.sizes : ['Free Size']),
+    [product.sizes],
+  );
   const [quantity, setQuantity] = useState(1);
-  const [selectedSize, setSelectedSize] = useState(product.sizes?.[0] ?? 'One Size');
+  const [selectedSize, setSelectedSize] = useState(sizes[0]);
   const [selectedColor, setSelectedColor] = useState(product.colors?.[0]?.name ?? '');
   const [addedToCart, setAddedToCart] = useState(false);
   const { addToCart, toggleWishlist, isInWishlist } = useShopStore();
   const wished = isInWishlist(product.slug);
+  const maxQty = Math.max(1, product.stockCount || 1);
 
   const handleAddToCart = () => {
     if (!product.inStock) return;
     addToCart(product.slug, quantity);
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 2000);
+  };
+
+  const handleSizeSelect = (size: string) => {
+    setSelectedSize(size);
+    setQuantity(1);
   };
 
   return (
@@ -42,7 +53,7 @@ export function ProductBuyBox({ product, compact = false, onBuyNow }: ProductBuy
             </span>
             {product.isNew && <Badge>New Arrival</Badge>}
             {product.discountPercent && (
-              <Badge variant="default">-{product.discountPercent}%</Badge>
+              <Badge variant="default">{product.discountPercent}% off</Badge>
             )}
           </div>
 
@@ -52,21 +63,13 @@ export function ProductBuyBox({ product, compact = false, onBuyNow }: ProductBuy
             <StarRating rating={product.rating} size="md" showValue reviewCount={product.reviewCount} />
           </div>
 
-          <div className="mt-5 flex flex-wrap items-baseline gap-3">
-            <span className="text-2xl font-semibold text-foreground sm:text-3xl">
-              {formatPrice(product.price)}
-            </span>
-            {product.originalPrice && (
-              <>
-                <span className="text-lg text-ink-faint line-through">
-                  {formatPrice(product.originalPrice)}
-                </span>
-                <span className="text-sm font-medium text-green-600 dark:text-green-400">
-                  Save {formatPrice(product.originalPrice - product.price)}
-                </span>
-              </>
-            )}
-          </div>
+          <ProductPrice
+            className="mt-5"
+            size="lg"
+            price={product.price}
+            mrp={product.originalPrice}
+            discountPercent={product.discountPercent}
+          />
 
           <div className="mt-3 flex items-center gap-2">
             <span
@@ -85,15 +88,20 @@ export function ProductBuyBox({ product, compact = false, onBuyNow }: ProductBuy
       )}
 
       {compact && (
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <p className="font-display text-lg text-foreground">{product.name}</p>
-            <p className="text-sm font-semibold text-foreground">{formatPrice(product.price)}</p>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="truncate font-display text-lg text-foreground">{product.name}</p>
+            <ProductPrice
+              size="sm"
+              price={product.price}
+              mrp={product.originalPrice}
+              discountPercent={product.discountPercent}
+            />
           </div>
           <button
             type="button"
             onClick={() => toggleWishlist(product.slug)}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-border"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border"
           >
             <Heart className={cn('h-4 w-4', wished && 'fill-champagne text-champagne')} />
           </button>
@@ -123,28 +131,34 @@ export function ProductBuyBox({ product, compact = false, onBuyNow }: ProductBuy
         </div>
       )}
 
-      {product.sizes && product.sizes.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-xs font-medium tracking-wider text-ink-muted uppercase">Size</p>
-          <div className="flex flex-wrap gap-2">
-            {product.sizes.map((size) => (
-              <button
-                key={size}
-                type="button"
-                onClick={() => setSelectedSize(size)}
-                className={cn(
-                  'min-w-[3rem] rounded-xl border px-4 py-2 text-sm transition-all',
-                  selectedSize === size
-                    ? 'border-ink bg-ink text-cream dark:border-cream dark:bg-cream dark:text-ink'
-                    : 'border-border text-ink-muted hover:border-champagne',
-                )}
-              >
-                {size}
-              </button>
-            ))}
-          </div>
+      <div className="space-y-2">
+        <p className="text-xs font-medium tracking-wider text-ink-muted uppercase">
+          Size — <span className="text-foreground">{selectedSize}</span>
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {sizes.map((size) => (
+            <button
+              key={size}
+              type="button"
+              onClick={() => handleSizeSelect(size)}
+              className={cn(
+                'min-w-[3rem] rounded-xl border px-4 py-2 text-sm transition-all',
+                selectedSize === size
+                  ? 'border-ink bg-ink text-cream dark:border-cream dark:bg-cream dark:text-ink'
+                  : 'border-border text-ink-muted hover:border-champagne',
+              )}
+            >
+              {size}
+            </button>
+          ))}
         </div>
-      )}
+        <p className="text-xs text-ink-faint">
+          Selected size <span className="font-medium text-foreground">{selectedSize}</span>
+          {product.inStock
+            ? ` · up to ${maxQty} available for this product`
+            : ' · currently unavailable'}
+        </p>
+      </div>
 
       <div className="flex items-center gap-3">
         <p className="text-xs font-medium tracking-wider text-ink-muted uppercase">Qty</p>
@@ -153,14 +167,16 @@ export function ProductBuyBox({ product, compact = false, onBuyNow }: ProductBuy
             type="button"
             onClick={() => setQuantity((q) => Math.max(1, q - 1))}
             className="flex h-10 w-10 items-center justify-center text-ink-muted hover:text-foreground"
+            aria-label="Decrease quantity"
           >
             <Minus className="h-4 w-4" />
           </button>
-          <span className="w-10 text-center text-sm font-medium">{quantity}</span>
+          <span className="w-10 text-center text-sm font-medium tabular-nums">{quantity}</span>
           <button
             type="button"
-            onClick={() => setQuantity((q) => Math.min(product.stockCount || 10, q + 1))}
+            onClick={() => setQuantity((q) => Math.min(maxQty, q + 1))}
             className="flex h-10 w-10 items-center justify-center text-ink-muted hover:text-foreground"
+            aria-label="Increase quantity"
           >
             <Plus className="h-4 w-4" />
           </button>
