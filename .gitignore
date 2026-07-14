@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Next.js
+.next/
+out/
+build/
+
+# Build / cache
+*.tsbuildinfo
+.turbo/
+.vercel/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
