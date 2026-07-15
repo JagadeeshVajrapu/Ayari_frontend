@@ -3,13 +3,15 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ProductBuyBox } from './product-buy-box';
+import type { ProductVariationState } from '@/features/product/hooks/use-product-variations';
 import type { ListingProduct } from '@/types/product.types';
 
 interface StickyBuyBoxProps {
   product: ListingProduct;
+  variation: ProductVariationState;
 }
 
-export function StickyBuyBox({ product }: StickyBuyBoxProps) {
+export function StickyBuyBox({ product, variation }: StickyBuyBoxProps) {
   const [visible, setVisible] = useState(false);
   useEffect(() => {
     const el = document.getElementById('buy-box');
@@ -35,7 +37,7 @@ export function StickyBuyBox({ product }: StickyBuyBoxProps) {
             transition={{ type: 'spring', damping: 28, stiffness: 300 }}
             className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/90 p-4 shadow-premium backdrop-blur-xl lg:hidden"
           >
-            <ProductBuyBox product={product} compact />
+            <ProductBuyBox product={product} variation={variation} compact />
           </motion.div>
         )}
       </AnimatePresence>
@@ -49,7 +51,7 @@ export function StickyBuyBox({ product }: StickyBuyBoxProps) {
             transition={{ type: 'spring', damping: 28, stiffness: 300 }}
             className="fixed top-32 right-6 z-40 hidden w-80 rounded-3xl glass-auth p-6 shadow-premium lg:block"
           >
-            <ProductBuyBox product={product} compact />
+            <ProductBuyBox product={product} variation={variation} compact />
           </motion.aside>
         )}
       </AnimatePresence>

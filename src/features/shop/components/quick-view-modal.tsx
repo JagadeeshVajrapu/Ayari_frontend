@@ -6,7 +6,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { X, ShoppingBag, Heart } from 'lucide-react';
 import { StarRating } from './star-rating';
-import { formatPrice, useShopStore } from '@/features/shop/stores/shop.store';
+import { ProductPrice } from '@/components/common/product-price';
+import { useShopStore } from '@/features/shop/stores/shop.store';
 import type { ListingProduct } from '@/types/product.types';
 import { Button } from '@/components/ui/button';
 
@@ -66,24 +67,14 @@ export function QuickViewModal({ product, onClose }: QuickViewModalProps) {
                       <StarRating rating={product.rating} showValue reviewCount={product.reviewCount} />
                     </div>
 
-                    <div className="mt-4 flex flex-wrap items-baseline gap-2">
-                      <span className="text-xl font-semibold text-foreground">
-                        {formatPrice(product.price)}
-                      </span>
-                      {product.originalPrice && product.originalPrice > product.price && (
-                        <>
-                          <span className="text-sm text-ink-faint">
-                            M.R.P:{' '}
-                            <span className="line-through">{formatPrice(product.originalPrice)}</span>
-                          </span>
-                          {product.discountPercent != null && (
-                            <span className="text-sm font-medium text-green-700 dark:text-green-400">
-                              ({product.discountPercent}% off)
-                            </span>
-                          )}
-                        </>
-                      )}
-                    </div>
+                    <ProductPrice
+                      className="mt-4"
+                      size="md"
+                      layout="stacked"
+                      price={product.price}
+                      mrp={product.originalPrice}
+                      discountPercent={product.discountPercent}
+                    />
 
                     <Dialog.Description className="mt-4 text-sm leading-relaxed text-ink-muted">
                       {product.description}

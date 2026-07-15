@@ -58,6 +58,9 @@ export function ProductCard({
               fill
               loading="lazy"
               quality={75}
+              unoptimized={
+                product.image.includes('localhost') || product.image.includes('/uploads/')
+              }
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
               className="image-zoom object-cover"
             />

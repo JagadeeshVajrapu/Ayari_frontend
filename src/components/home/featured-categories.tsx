@@ -6,6 +6,7 @@ import { ScrollReveal } from '@/components/common/scroll-reveal';
 import { Button } from '@/components/ui/button';
 import { fetchCategories } from '@/lib/server-catalog';
 import { CATEGORY_PLACEHOLDER } from '@/lib/catalog-constants';
+import { resolveMediaUrl } from '@/lib/media';
 
 export async function FeaturedCategories() {
   const categories = await fetchCategories().catch(() => []);
@@ -34,16 +35,19 @@ export async function FeaturedCategories() {
         </div>
 
         <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {categories.slice(0, 4).map((category, index) => (
-            <CategoryCard
-              key={category.id}
-              title={category.name}
-              subtitle={`${category.productCount} products`}
-              image={category.imageUrl ?? CATEGORY_PLACEHOLDER}
-              href={`/shop?categories=${encodeURIComponent(category.name)}`}
-              index={index}
-            />
-          ))}
+          {categories.slice(0, 4).map((category, index) => {
+            const image = resolveMediaUrl(category.imageUrl, CATEGORY_PLACEHOLDER);
+            return (
+              <CategoryCard
+                key={category.id}
+                title={category.name}
+                subtitle={`${category.productCount} ${category.productCount === 1 ? 'product' : 'products'}`}
+                image={image}
+                href={`/shop?categories=${encodeURIComponent(category.name)}`}
+                index={index}
+              />
+            );
+          })}
         </div>
       </div>
     </section>

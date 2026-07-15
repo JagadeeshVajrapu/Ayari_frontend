@@ -6,7 +6,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Eye, GitCompareArrows, Heart, ShoppingBag } from 'lucide-react';
 import { StarRating } from './star-rating';
-import { formatPrice, useShopStore } from '@/features/shop/stores/shop.store';
+import { ProductPrice } from '@/components/common/product-price';
+import { useShopStore } from '@/features/shop/stores/shop.store';
 import type { ListingProduct } from '@/types/product.types';
 import { cn } from '@/lib/utils';
 
@@ -39,7 +40,16 @@ export function ListingProductRow({ product, index, onQuickView }: ListingProduc
       className="group flex gap-4 rounded-3xl border border-border/60 bg-surface-elevated p-4 transition-all duration-500 hover:border-champagne/30 hover:shadow-medium sm:gap-6 sm:p-5"
     >
       <Link href={`/products/${product.slug}`} className="relative h-36 w-28 shrink-0 overflow-hidden rounded-2xl sm:h-44 sm:w-36">
-        <Image src={product.image} alt={product.name} fill className="image-zoom object-cover" sizes="144px" />
+        <Image
+          src={product.image}
+          alt={product.name}
+          fill
+          className="image-zoom object-cover"
+          sizes="144px"
+          unoptimized={
+            product.image.includes('localhost') || product.image.includes('/uploads/')
+          }
+        />
         {product.discountPercent && (
           <span className="absolute top-2 left-2 rounded-full bg-ink px-2 py-0.5 text-[9px] font-bold text-champagne">
             -{product.discountPercent}%
@@ -71,23 +81,12 @@ export function ListingProductRow({ product, index, onQuickView }: ListingProduc
         </div>
 
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-base font-semibold text-foreground sm:text-lg">
-              {formatPrice(product.price)}
-            </span>
-            {product.originalPrice && product.originalPrice > product.price && (
-              <>
-                <span className="text-sm text-ink-faint">
-                  M.R.P: <span className="line-through">{formatPrice(product.originalPrice)}</span>
-                </span>
-                {product.discountPercent != null && (
-                  <span className="text-sm font-medium text-green-700 dark:text-green-400">
-                    ({product.discountPercent}% off)
-                  </span>
-                )}
-              </>
-            )}
-          </div>
+          <ProductPrice
+            size="md"
+            price={product.price}
+            mrp={product.originalPrice}
+            discountPercent={product.discountPercent}
+          />
 
           <div className="flex items-center gap-1.5">
             <button

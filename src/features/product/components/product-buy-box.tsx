@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Minus, Plus, Heart, ShoppingBag, Zap } from 'lucide-react';
 import { StarRating } from '@/features/shop/components/star-rating';
@@ -8,28 +8,36 @@ import { useShopStore } from '@/features/shop/stores/shop.store';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ProductPrice } from '@/components/common/product-price';
+import { ProductVariationSelectors } from './product-variation-selectors';
 import { ShareProduct } from './share-product';
+import type { ProductVariationState } from '@/features/product/hooks/use-product-variations';
 import type { ListingProduct } from '@/types/product.types';
 import { cn } from '@/lib/utils';
 
 interface ProductBuyBoxProps {
   product: ListingProduct;
+  variation: ProductVariationState;
   compact?: boolean;
   onBuyNow?: () => void;
 }
 
-export function ProductBuyBox({ product, compact = false, onBuyNow }: ProductBuyBoxProps) {
-  const sizes = useMemo(
-    () => (product.sizes?.length ? product.sizes : ['Free Size']),
-    [product.sizes],
-  );
+export function ProductBuyBox({ product, variation, compact = false, onBuyNow }: ProductBuyBoxProps) {
   const [quantity, setQuantity] = useState(1);
-  const [selectedSize, setSelectedSize] = useState(sizes[0]);
-  const [selectedColor, setSelectedColor] = useState(product.colors?.[0]?.name ?? '');
   const [addedToCart, setAddedToCart] = useState(false);
   const { addToCart, toggleWishlist, isInWishlist } = useShopStore();
   const wished = isInWishlist(product.slug);
   const maxQty = Math.max(1, product.stockCount || 1);
+
+  const {
+    displayTitle,
+    activePrice,
+    activeMrp,
+    discountPercent,
+    selectedColorId,
+    selectedSetId,
+    setSelectedColor,
+    setSelectedSet,
+  } = variation;
 
   const handleAddToCart = () => {
     if (!product.inStock) return;
@@ -38,10 +46,9 @@ export function ProductBuyBox({ product, compact = false, onBuyNow }: ProductBuy
     setTimeout(() => setAddedToCart(false), 2000);
   };
 
-  const handleSizeSelect = (size: string) => {
-    setSelectedSize(size);
-    setQuantity(1);
-  };
+  const hasVariations =
+    (product.colorVariants?.length ?? 0) > 0 ||
+    (product.setVariants?.length ?? 0) > 0;
 
   return (
     <div className={cn(!compact && 'space-y-6')}>
@@ -52,12 +59,12 @@ export function ProductBuyBox({ product, compact = false, onBuyNow }: ProductBuy
               {product.brand}
             </span>
             {product.isNew && <Badge>New Arrival</Badge>}
-            {product.discountPercent && (
-              <Badge variant="default">{product.discountPercent}% off</Badge>
+            {discountPercent != null && discountPercent > 0 && (
+              <Badge variant="default">{discountPercent}% off</Badge>
             )}
           </div>
 
-          <h1 className="mt-2 font-display text-display-md text-foreground">{product.name}</h1>
+          <h1 className="mt-2 font-display text-display-md text-foreground">{displayTitle}</h1>
 
           <div className="mt-3 flex items-center gap-3">
             <StarRating rating={product.rating} size="md" showValue reviewCount={product.reviewCount} />
@@ -66,9 +73,10 @@ export function ProductBuyBox({ product, compact = false, onBuyNow }: ProductBuy
           <ProductPrice
             className="mt-5"
             size="lg"
-            price={product.price}
-            mrp={product.originalPrice}
-            discountPercent={product.discountPercent}
+            layout="amazon"
+            price={activePrice}
+            mrp={activeMrp}
+            discountPercent={discountPercent}
           />
 
           <div className="mt-3 flex items-center gap-2">
@@ -90,12 +98,13 @@ export function ProductBuyBox({ product, compact = false, onBuyNow }: ProductBuy
       {compact && (
         <div className="mb-4 flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="truncate font-display text-lg text-foreground">{product.name}</p>
+            <p className="truncate font-display text-lg text-foreground">{displayTitle}</p>
             <ProductPrice
               size="sm"
-              price={product.price}
-              mrp={product.originalPrice}
-              discountPercent={product.discountPercent}
+              layout="amazon"
+              price={activePrice}
+              mrp={activeMrp}
+              discountPercent={discountPercent}
             />
           </div>
           <button
@@ -108,57 +117,18 @@ export function ProductBuyBox({ product, compact = false, onBuyNow }: ProductBuy
         </div>
       )}
 
-      {product.colors && product.colors.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-xs font-medium tracking-wider text-ink-muted uppercase">
-            Color — <span className="text-foreground">{selectedColor}</span>
-          </p>
-          <div className="flex gap-2">
-            {product.colors.map((color) => (
-              <button
-                key={color.name}
-                type="button"
-                onClick={() => setSelectedColor(color.name)}
-                className={cn(
-                  'h-8 w-8 rounded-full border-2 transition-all hover:scale-110',
-                  selectedColor === color.name ? 'border-champagne ring-2 ring-champagne/30' : 'border-border',
-                )}
-                style={{ backgroundColor: color.hex }}
-                title={color.name}
-              />
-            ))}
-          </div>
-        </div>
+      {hasVariations && !compact && (
+        <ProductVariationSelectors
+          basePrice={product.price}
+          baseMrp={product.originalPrice}
+          colorVariants={product.colorVariants}
+          setVariants={product.setVariants}
+          selectedColorId={selectedColorId}
+          selectedSetId={selectedSetId}
+          onColorChange={setSelectedColor}
+          onSetChange={setSelectedSet}
+        />
       )}
-
-      <div className="space-y-2">
-        <p className="text-xs font-medium tracking-wider text-ink-muted uppercase">
-          Size — <span className="text-foreground">{selectedSize}</span>
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {sizes.map((size) => (
-            <button
-              key={size}
-              type="button"
-              onClick={() => handleSizeSelect(size)}
-              className={cn(
-                'min-w-[3rem] rounded-xl border px-4 py-2 text-sm transition-all',
-                selectedSize === size
-                  ? 'border-ink bg-ink text-cream dark:border-cream dark:bg-cream dark:text-ink'
-                  : 'border-border text-ink-muted hover:border-champagne',
-              )}
-            >
-              {size}
-            </button>
-          ))}
-        </div>
-        <p className="text-xs text-ink-faint">
-          Selected size <span className="font-medium text-foreground">{selectedSize}</span>
-          {product.inStock
-            ? ` · up to ${maxQty} available for this product`
-            : ' · currently unavailable'}
-        </p>
-      </div>
 
       <div className="flex items-center gap-3">
         <p className="text-xs font-medium tracking-wider text-ink-muted uppercase">Qty</p>

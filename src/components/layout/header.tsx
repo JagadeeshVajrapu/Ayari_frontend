@@ -17,10 +17,8 @@ import { cn } from '@/lib/utils';
 
 const navLinks = [
   { label: 'Shop', href: '/shop' },
+  { label: 'Featured', href: '/shop?featured=true' },
   { label: 'New Arrivals', href: '/shop?sort=newest' },
-  { label: 'Women', href: '/shop?categories=Women' },
-  { label: 'Men', href: '/shop?categories=Men' },
-  { label: 'Accessories', href: '/shop?categories=Accessories' },
 ];
 
 function NavLink({ href, label, index }: { href: string; label: string; index: number }) {

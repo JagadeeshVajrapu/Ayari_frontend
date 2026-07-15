@@ -6,7 +6,12 @@ export function getApiOrigin(): string {
 
 export function resolveMediaUrl(url: string | null | undefined, fallback = ''): string {
   if (!url) return fallback;
-  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+  if (
+    url.startsWith('http://') ||
+    url.startsWith('https://') ||
+    url.startsWith('data:') ||
+    url.startsWith('blob:')
+  ) {
     return url;
   }
   const origin = getApiOrigin();

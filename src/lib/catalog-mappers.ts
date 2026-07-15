@@ -1,6 +1,7 @@
 import type { ListingProduct } from '@/types/product.types';
 import { PRODUCT_PLACEHOLDER } from '@/lib/catalog-constants';
 import { resolveMediaUrl } from '@/lib/media';
+import type { ColorVariant, SetVariant } from '@/lib/product-variations';
 
 export interface ApiProduct {
   id: string;
@@ -17,6 +18,21 @@ export interface ApiProduct {
   isActive: boolean;
   isFeatured: boolean;
   sizes?: string[];
+  colorVariants?: Array<{
+    id: string;
+    name: string;
+    hex?: string;
+    imageUrl?: string;
+    price?: number;
+    compareAtPrice?: number;
+  }>;
+  setVariants?: Array<{
+    id: string;
+    name: string;
+    label?: string;
+    price?: number;
+    compareAtPrice?: number;
+  }>;
   image: string | null;
   images: Array<{ id: string; url: string; altText: string | null; isPrimary: boolean; sortOrder?: number; cloudinaryPublicId?: string | null }>;
   featuredImages: Array<{ id: string; url: string; altText: string | null; sortOrder?: number; cloudinaryPublicId?: string | null }>;
@@ -68,6 +84,7 @@ export function mapApiProductToListing(product: ApiProduct): ListingProduct {
     name: product.name,
     slug: product.slug,
     description: product.description ?? '',
+    longDescription: product.description ?? '',
     price: product.price,
     originalPrice: mrp && mrp > product.price ? mrp : undefined,
     image: images[0],
@@ -84,7 +101,9 @@ export function mapApiProductToListing(product: ApiProduct): ListingProduct {
     discountPercent,
     createdAt: product.createdAt,
     sku: product.sku,
-    sizes: product.sizes?.length ? product.sizes : ['Free Size'],
+    sizes: product.sizes?.length ? product.sizes : undefined,
+    colorVariants: (product.colorVariants as ColorVariant[] | undefined) ?? [],
+    setVariants: (product.setVariants as SetVariant[] | undefined) ?? [],
   };
 }
 

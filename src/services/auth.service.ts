@@ -87,7 +87,14 @@ export const authService = {
 
 export function getApiErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
-    const data = error.response?.data as
+    if (!error.response) {
+      if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
+        return 'Cannot reach the API server. Make sure the backend is running on localhost:5000.';
+      }
+      return 'Network error. Please check your connection and try again.';
+    }
+
+    const data = error.response.data as
       | { message?: string; errors?: Array<{ field: string; message: string }> }
       | undefined;
 
@@ -96,6 +103,9 @@ export function getApiErrorMessage(error: unknown): string {
     }
 
     return data?.message ?? 'Something went wrong. Please try again.';
+  }
+  if (error instanceof Error && error.message) {
+    return error.message;
   }
   return 'Something went wrong. Please try again.';
 }
