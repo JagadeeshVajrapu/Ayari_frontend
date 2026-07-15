@@ -13,7 +13,9 @@ export interface AdminProductImage {
   altText: string | null;
   sortOrder: number;
   cloudinaryPublicId: string | null;
+  folder?: string | null;
   isPrimary?: boolean;
+  createdAt?: string;
 }
 
 export interface AdminProduct {
@@ -30,6 +32,22 @@ export interface AdminProduct {
   category: string;
   isActive: boolean;
   isFeatured: boolean;
+  sizes?: string[];
+  colorVariants?: Array<{
+    id: string;
+    name: string;
+    hex?: string;
+    imageUrl?: string;
+    price?: number;
+    compareAtPrice?: number;
+  }>;
+  setVariants?: Array<{
+    id: string;
+    name: string;
+    label?: string;
+    price?: number;
+    compareAtPrice?: number;
+  }>;
   image: string | null;
   images: AdminProductImage[];
   featuredImages: AdminProductImage[];
@@ -78,7 +96,9 @@ interface ProductImagePayload {
   id?: string;
   url: string;
   cloudinaryPublicId?: string;
+  folder?: string;
   sortOrder?: number;
+  isPrimary?: boolean;
 }
 
 interface CreateProductPayload {
@@ -89,6 +109,22 @@ interface CreateProductPayload {
   categoryId: string;
   description?: string;
   compareAtPrice?: number;
+  sizes?: string[];
+  colorVariants?: Array<{
+    id?: string;
+    name: string;
+    hex?: string;
+    imageUrl?: string;
+    price?: number;
+    compareAtPrice?: number;
+  }>;
+  setVariants?: Array<{
+    id?: string;
+    name: string;
+    label?: string;
+    price?: number;
+    compareAtPrice?: number;
+  }>;
   productImages: ProductImagePayload[];
   featuredImages: ProductImagePayload[];
   isActive?: boolean;
@@ -116,14 +152,27 @@ export const adminService = {
 
   deleteProduct: (id: string) => api.delete(`/admin/products/${id}`),
 
-  uploadProductImage: (file: File, type: 'product' | 'featured' = 'product') => {
+  uploadProductImage: (
+    file: File,
+    options: {
+      type?: 'product' | 'gallery' | 'featured';
+      categoryName: string;
+      productName: string;
+    },
+  ) => {
     const formData = new FormData();
     formData.append('image', file);
-    return api.post<ApiResponse<{ url: string; publicId: string }>>(
+    const type =
+      options.type === 'gallery' || options.type === 'featured' ? 'gallery' : 'product';
+    return api.post<ApiResponse<{ url: string; publicId: string; folder: string }>>(
       '/admin/upload/product-image',
       formData,
       {
-        params: { type: type === 'featured' ? 'featured' : 'products' },
+        params: {
+          type,
+          categoryName: options.categoryName,
+          productName: options.productName,
+        },
         headers: { 'Content-Type': 'multipart/form-data' },
       },
     );

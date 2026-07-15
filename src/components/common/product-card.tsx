@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Heart, ShoppingBag } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { ProductPrice } from '@/components/common/product-price';
 import { cn } from '@/lib/utils';
 
 export interface Product {
@@ -34,20 +35,6 @@ export function ProductCard({
   index = 0,
   variant = 'default',
 }: ProductCardProps) {
-  const formattedPrice = new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0,
-  }).format(product.price);
-
-  const formattedOriginal = product.originalPrice
-    ? new Intl.NumberFormat('en-IN', {
-        style: 'currency',
-        currency: 'INR',
-        maximumFractionDigits: 0,
-      }).format(product.originalPrice)
-    : null;
-
   return (
     <motion.article
       initial={{ opacity: 0, y: 30, scale: 0.97 }}
@@ -71,6 +58,9 @@ export function ProductCard({
               fill
               loading="lazy"
               quality={75}
+              unoptimized={
+                product.image.includes('localhost') || product.image.includes('/uploads/')
+              }
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
               className="image-zoom object-cover"
             />
@@ -133,12 +123,12 @@ export function ProductCard({
           <h3 className="font-display text-base text-ink transition-colors group-hover:text-champagne-dark md:text-lg">
             {product.name}
           </h3>
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-ink">{formattedPrice}</span>
-            {formattedOriginal && (
-              <span className="text-xs text-ink-faint line-through">{formattedOriginal}</span>
-            )}
-          </div>
+          <ProductPrice
+            size="sm"
+            price={product.price}
+            mrp={product.originalPrice}
+            discountPercent={product.discountPercent}
+          />
         </div>
       </Link>
     </motion.article>

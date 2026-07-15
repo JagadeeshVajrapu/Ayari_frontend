@@ -107,6 +107,18 @@ export function ProductFiltersPanel({
       <FilterSection title="Availability">
         <label className="flex cursor-pointer items-center gap-3 text-sm text-ink-muted hover:text-foreground">
           <Checkbox.Root
+            checked={filters.featuredOnly}
+            onCheckedChange={(checked) => onChange({ featuredOnly: checked === true })}
+            className="flex h-4 w-4 items-center justify-center rounded border border-border data-[state=checked]:border-champagne data-[state=checked]:bg-champagne"
+          >
+            <Checkbox.Indicator>
+              <Check className="h-3 w-3 text-ink" />
+            </Checkbox.Indicator>
+          </Checkbox.Root>
+          Featured only
+        </label>
+        <label className="mt-2 flex cursor-pointer items-center gap-3 text-sm text-ink-muted hover:text-foreground">
+          <Checkbox.Root
             checked={filters.inStockOnly}
             onCheckedChange={(checked) => onChange({ inStockOnly: checked === true })}
             className="flex h-4 w-4 items-center justify-center rounded border border-border data-[state=checked]:border-champagne data-[state=checked]:bg-champagne"

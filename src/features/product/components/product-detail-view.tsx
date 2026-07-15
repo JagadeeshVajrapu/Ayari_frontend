@@ -11,6 +11,7 @@ import { ProductReviews } from './product-reviews';
 import { RelatedProducts } from './related-products';
 import { FrequentlyBoughtTogether } from './frequently-bought-together';
 import { StickyBuyBox } from './sticky-buy-box';
+import { useProductVariations } from '@/features/product/hooks/use-product-variations';
 import { Separator } from '@/components/ui/separator';
 import type { ListingProduct } from '@/types/product.types';
 import type { ProductReview } from '@/types/product.types';
@@ -28,6 +29,8 @@ export function ProductDetailView({
   bundleProducts,
   reviews,
 }: ProductDetailViewProps) {
+  const variation = useProductVariations(product);
+
   return (
     <div className="pb-24 lg:pb-16">
       <div className="container-premium pt-6">
@@ -45,7 +48,7 @@ export function ProductDetailView({
           </Link>
           <ChevronRight className="h-3 w-3" />
           <Link
-            href={`/shop?categories=${product.category}`}
+            href={`/shop?categories=${encodeURIComponent(product.category)}`}
             className="transition-colors hover:text-foreground"
           >
             {product.category}
@@ -60,7 +63,11 @@ export function ProductDetailView({
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
           >
-            <ProductGallery images={product.images} name={product.name} />
+            <ProductGallery
+              images={variation.galleryImages}
+              featuredImages={product.featuredImages}
+              name={variation.displayTitle}
+            />
           </motion.div>
 
           <motion.div
@@ -70,7 +77,7 @@ export function ProductDetailView({
             className="space-y-6"
             id="buy-box"
           >
-            <ProductBuyBox product={product} />
+            <ProductBuyBox product={product} variation={variation} />
             <DeliveryChecker />
           </motion.div>
         </div>
@@ -84,8 +91,13 @@ export function ProductDetailView({
           className="max-w-3xl space-y-4"
         >
           <h2 className="font-display text-2xl text-foreground">Description</h2>
-          <p className="text-base leading-relaxed text-ink-muted">{product.longDescription}</p>
-          <p className="text-sm leading-relaxed text-ink-muted">{product.description}</p>
+          {product.description ? (
+            <p className="text-base leading-relaxed whitespace-pre-wrap text-ink-muted">
+              {product.description}
+            </p>
+          ) : (
+            <p className="text-sm text-ink-faint">No description provided.</p>
+          )}
         </motion.div>
 
         {product.specifications && (
@@ -107,7 +119,7 @@ export function ProductDetailView({
         <RelatedProducts products={relatedProducts} />
       </div>
 
-      <StickyBuyBox product={product} />
+      <StickyBuyBox product={product} variation={variation} />
     </div>
   );
 }

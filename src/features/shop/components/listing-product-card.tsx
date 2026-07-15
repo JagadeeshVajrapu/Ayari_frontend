@@ -7,7 +7,8 @@ import Link from 'next/link';
 import { Eye, GitCompareArrows, Heart, ShoppingBag } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { StarRating } from './star-rating';
-import { formatPrice, useShopStore } from '@/features/shop/stores/shop.store';
+import { ProductPrice } from '@/components/common/product-price';
+import { useShopStore } from '@/features/shop/stores/shop.store';
 import type { ListingProduct } from '@/types/product.types';
 import { cn } from '@/lib/utils';
 
@@ -51,6 +52,9 @@ export function ListingProductCard({ product, index, onQuickView }: ListingProdu
               fill
               loading="lazy"
               quality={75}
+              unoptimized={
+                product.image.includes('localhost') || product.image.includes('/uploads/')
+              }
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
               className="image-zoom object-cover"
             />
@@ -140,14 +144,12 @@ export function ListingProductCard({ product, index, onQuickView }: ListingProdu
             {product.name}
           </h3>
         </Link>
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-foreground">{formatPrice(product.price)}</span>
-          {product.originalPrice && (
-            <span className="text-xs text-ink-faint line-through">
-              {formatPrice(product.originalPrice)}
-            </span>
-          )}
-        </div>
+        <ProductPrice
+          size="sm"
+          price={product.price}
+          mrp={product.originalPrice}
+          discountPercent={product.discountPercent}
+        />
       </div>
     </motion.article>
   );

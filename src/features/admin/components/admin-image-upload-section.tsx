@@ -1,18 +1,28 @@
 'use client';
 
-import { useRef } from 'react';
-import Image from 'next/image';
-import { GripVertical, ImagePlus, X } from 'lucide-react';
+import { useCallback, useRef, useState } from 'react';
+import { ImagePlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { resolveMediaUrl } from '@/lib/media';
-import { PRODUCT_PLACEHOLDER } from '@/lib/catalog-constants';
 import { cn } from '@/lib/utils';
+import { AdminImagePreviewCard } from './admin-image-preview-card';
 
 export interface ImageUploadItem {
+  clientId: string;
   id?: string;
   url: string;
   cloudinaryPublicId: string;
+  folder?: string;
   previewUrl?: string;
+  file?: File;
+  fileName?: string;
+  fileSize?: number;
+  width?: number;
+  height?: number;
+  isPrimary?: boolean;
+  uploading?: boolean;
+  uploadProgress?: number;
+  uploaded?: boolean;
+  error?: string;
 }
 
 interface AdminImageUploadSectionProps {
@@ -21,13 +31,49 @@ interface AdminImageUploadSectionProps {
   images: ImageUploadItem[];
   min?: number;
   max?: number;
+  /** When true, first / marked image shows Primary badge and Set as Primary. */
+  enablePrimary?: boolean;
   onChange: (images: ImageUploadItem[]) => void;
-  onUpload: (file: File) => Promise<{ url: string; publicId: string }>;
   disabled?: boolean;
 }
 
-const ACCEPT = 'image/jpeg,image/png,image/webp,image/gif,image/avif';
+const ACCEPT = 'image/jpeg,image/jpg,image/png,image/webp';
+const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const MAX_SIZE = 5 * 1024 * 1024;
+
+function createClientId() {
+  return typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `img-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function readImageDimensions(file: File): Promise<{ width: number; height: number } | null> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new window.Image();
+    img.onload = () => {
+      const dims = { width: img.naturalWidth, height: img.naturalHeight };
+      URL.revokeObjectURL(url);
+      resolve(dims);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(null);
+    };
+    img.src = url;
+  });
+}
+
+/** First image is always the primary / default display image when enabled. */
+function ensurePrimaryFlags(items: ImageUploadItem[], enablePrimary: boolean): ImageUploadItem[] {
+  if (!enablePrimary || items.length === 0) {
+    return items.map((img) => ({ ...img, isPrimary: false }));
+  }
+  return items.map((img, index) => ({
+    ...img,
+    isPrimary: index === 0,
+  }));
+}
 
 export function AdminImageUploadSection({
   label,
@@ -35,56 +81,129 @@ export function AdminImageUploadSection({
   images,
   min = 1,
   max = 10,
+  enablePrimary = false,
   onChange,
-  onUpload,
   disabled = false,
 }: AdminImageUploadSectionProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragIndexRef = useRef<number | null>(null);
+  const [sectionError, setSectionError] = useState('');
+  const [isDragOver, setIsDragOver] = useState(false);
 
-  const handleFiles = async (files: FileList | null) => {
-    if (!files?.length || disabled) return;
+  const commit = useCallback(
+    (next: ImageUploadItem[]) => {
+      onChange(ensurePrimaryFlags(next, enablePrimary));
+    },
+    [enablePrimary, onChange],
+  );
+
+  const handleFiles = async (files: FileList | File[] | null) => {
+    if (!files || disabled) return;
+    const list = Array.from(files);
+    if (!list.length) return;
 
     const remaining = max - images.length;
-    if (remaining <= 0) return;
+    if (remaining <= 0) {
+      setSectionError(`Maximum ${max} images allowed`);
+      return;
+    }
 
-    const toUpload = Array.from(files).slice(0, remaining);
+    setSectionError('');
+    const errors: string[] = [];
+    const existingKeys = new Set(
+      images.map((img) => `${img.fileName ?? ''}:${img.fileSize ?? 0}:${img.url}`),
+    );
 
-    const uploaded: ImageUploadItem[] = [];
+    const accepted = list.slice(0, remaining);
+    if (list.length > remaining) {
+      errors.push(`Only ${remaining} more image${remaining === 1 ? '' : 's'} can be added (max ${max})`);
+    }
 
-    for (const file of toUpload) {
-      if (!file.type.startsWith('image/')) continue;
-      if (file.size > MAX_SIZE) continue;
+    const pending: ImageUploadItem[] = [];
+
+    for (const file of accepted) {
+      if (!ALLOWED_TYPES.has(file.type)) {
+        errors.push(`${file.name}: only JPG, JPEG, PNG, and WebP are allowed`);
+        continue;
+      }
+      if (file.size > MAX_SIZE) {
+        errors.push(`${file.name}: must be 5 MB or smaller`);
+        continue;
+      }
+      if (file.size === 0) {
+        errors.push(`${file.name}: file appears corrupted or empty`);
+        continue;
+      }
+
+      const dupKey = `${file.name}:${file.size}:`;
+      if (
+        existingKeys.has(dupKey) ||
+        images.some(
+          (img) =>
+            img.fileName === file.name &&
+            img.fileSize === file.size &&
+            !img.url,
+        ) ||
+        pending.some((img) => img.fileName === file.name && img.fileSize === file.size)
+      ) {
+        errors.push(`${file.name}: already selected`);
+        continue;
+      }
 
       const previewUrl = URL.createObjectURL(file);
-      try {
-        const { url, publicId } = await onUpload(file);
-        uploaded.push({ url, cloudinaryPublicId: publicId, previewUrl });
-      } catch {
-        URL.revokeObjectURL(previewUrl);
-      }
+      const dims = await readImageDimensions(file);
+
+      pending.push({
+        clientId: createClientId(),
+        url: '',
+        cloudinaryPublicId: '',
+        previewUrl,
+        file,
+        fileName: file.name,
+        fileSize: file.size,
+        width: dims?.width,
+        height: dims?.height,
+        uploaded: false,
+      });
     }
 
-    if (uploaded.length) {
-      onChange([...images, ...uploaded]);
+    if (errors.length) {
+      setSectionError(errors[0]);
     }
 
+    if (!pending.length) {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    commit([...images, ...pending]);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const removeImage = (index: number) => {
-    const item = images[index];
-    if (item.previewUrl?.startsWith('blob:')) {
+  const removeImage = (clientId: string) => {
+    const item = images.find((img) => img.clientId === clientId);
+    if (item?.previewUrl?.startsWith('blob:')) {
       URL.revokeObjectURL(item.previewUrl);
     }
-    onChange(images.filter((_, i) => i !== index));
+    const next = images.filter((img) => img.clientId !== clientId);
+    commit(next);
+  };
+
+  const setPrimary = (clientId: string) => {
+    if (!enablePrimary) return;
+    const index = images.findIndex((img) => img.clientId === clientId);
+    if (index < 0) return;
+    const next = [...images];
+    const [moved] = next.splice(index, 1);
+    next.unshift({ ...moved, isPrimary: true });
+    commit(next.map((img, i) => ({ ...img, isPrimary: i === 0 })));
   };
 
   const handleDragStart = (index: number) => {
     dragIndexRef.current = index;
   };
 
-  const handleDragOver = (e: React.DragEvent, index: number) => {
+  const handleDragOverItem = (e: React.DragEvent, index: number) => {
     e.preventDefault();
     const from = dragIndexRef.current;
     if (from === null || from === index) return;
@@ -93,23 +212,56 @@ export function AdminImageUploadSection({
     const [moved] = next.splice(from, 1);
     next.splice(index, 0, moved);
     dragIndexRef.current = index;
-    onChange(next);
+    commit(next);
   };
 
   const handleDragEnd = () => {
     dragIndexRef.current = null;
   };
 
-  const canAdd = images.length < max;
+  const onDropZoneDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!disabled) setIsDragOver(true);
+  };
+
+  const onDropZoneDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  };
+
+  const onDropZoneDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    if (disabled) return;
+    void handleFiles(e.dataTransfer.files);
+  };
+
+  const canAdd = images.length < max && !disabled;
+  const selectedCount = images.length;
 
   return (
-    <div className="rounded-xl border border-dashed border-border bg-muted/30 p-4">
+    <div
+      className={cn(
+        'rounded-xl border border-dashed bg-muted/30 p-4 transition-colors',
+        isDragOver ? 'border-brand bg-brand/5' : 'border-border',
+      )}
+      onDragOver={onDropZoneDragOver}
+      onDragLeave={onDropZoneDragLeave}
+      onDrop={onDropZoneDrop}
+    >
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-sm font-medium text-foreground">{label}</p>
           <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {images.length}/{max} images · minimum {min}
+          <p className="mt-1 text-xs font-medium text-foreground">
+            {selectedCount === 0
+              ? min > 0
+                ? `No images selected · max ${max} · min ${min}`
+                : `Optional · max ${max}`
+              : `${selectedCount} Image${selectedCount === 1 ? '' : 's'} Selected · max ${max}`}
           </p>
         </div>
         {canAdd && (
@@ -126,57 +278,72 @@ export function AdminImageUploadSection({
         )}
       </div>
 
+      {sectionError && (
+        <p className="mt-2 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs text-red-600 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-400">
+          {sectionError}
+        </p>
+      )}
+
       {images.length > 0 ? (
-        <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
-          {images.map((img, index) => (
-            <div
-              key={img.id ?? img.cloudinaryPublicId ?? index}
-              draggable={!disabled}
-              onDragStart={() => handleDragStart(index)}
-              onDragOver={(e) => handleDragOver(e, index)}
-              onDragEnd={handleDragEnd}
+        <div className="mt-3 space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">
+            Selected Files ({images.length})
+          </p>
+          <ul className="space-y-1 rounded-lg border border-border/60 bg-background/60 px-2.5 py-2">
+            {images.map((img) => (
+              <li
+                key={`name-${img.clientId}`}
+                className="flex items-center gap-1.5 truncate text-xs text-foreground"
+              >
+                <span className="text-emerald-600">✓</span>
+                <span className="truncate">{img.fileName || 'Uploaded image'}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+            {images.map((img, index) => (
+              <AdminImagePreviewCard
+                key={img.clientId}
+                image={img}
+                index={index}
+                showPrimary={enablePrimary}
+                disabled={disabled}
+                onRemove={() => removeImage(img.clientId)}
+                onSetPrimary={enablePrimary ? () => setPrimary(img.clientId) : undefined}
+                onDragStart={() => handleDragStart(index)}
+                onDragOver={(e) => handleDragOverItem(e, index)}
+                onDragEnd={handleDragEnd}
+              />
+            ))}
+          </div>
+          {canAdd && (
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => fileInputRef.current?.click()}
               className={cn(
-                'group relative aspect-square overflow-hidden rounded-lg border border-border bg-muted',
-                index === 0 && 'ring-2 ring-brand/40',
+                'flex w-full items-center justify-center gap-2 rounded-xl border border-dashed py-3 text-xs text-muted-foreground transition-colors hover:border-brand/40 hover:text-foreground disabled:opacity-50',
+                isDragOver && 'border-brand text-foreground',
               )}
             >
-              <Image
-                src={resolveMediaUrl(img.previewUrl ?? img.url, PRODUCT_PLACEHOLDER)}
-                alt={`${label} ${index + 1}`}
-                fill
-                className="object-cover"
-                sizes="96px"
-                unoptimized
-              />
-              <div className="absolute top-1 left-1 flex h-5 w-5 cursor-grab items-center justify-center rounded bg-background/80 opacity-0 transition-opacity group-hover:opacity-100">
-                <GripVertical className="h-3 w-3 text-muted-foreground" />
-              </div>
-              {index === 0 && (
-                <span className="absolute bottom-1 left-1 rounded bg-background/90 px-1.5 py-0.5 text-[10px] font-medium text-foreground">
-                  Primary
-                </span>
-              )}
-              <button
-                type="button"
-                onClick={() => removeImage(index)}
-                disabled={disabled}
-                className="absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full bg-background/90 text-foreground shadow-sm hover:bg-background disabled:opacity-50"
-                aria-label={`Remove image ${index + 1}`}
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          ))}
+              <ImagePlus className="h-4 w-4" />
+              Drop more files here or browse
+            </button>
+          )}
         </div>
       ) : (
         <button
           type="button"
           disabled={disabled}
           onClick={() => fileInputRef.current?.click()}
-          className="mt-3 flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-border bg-background py-8 text-muted-foreground transition-colors hover:border-brand/40 hover:text-foreground disabled:opacity-50"
+          className={cn(
+            'mt-3 flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-border bg-background py-8 text-muted-foreground transition-colors hover:border-brand/40 hover:text-foreground disabled:opacity-50',
+            isDragOver && 'border-brand bg-brand/5 text-foreground',
+          )}
         >
           <ImagePlus className="h-8 w-8" />
-          <span className="text-sm">Click to upload images</span>
+          <span className="text-sm font-medium">Drag & drop images here</span>
+          <span className="text-xs">or click to browse · JPG, PNG, WebP · max 5 MB each</span>
         </button>
       )}
 
@@ -187,7 +354,7 @@ export function AdminImageUploadSection({
         multiple
         className="hidden"
         disabled={disabled}
-        onChange={(e) => handleFiles(e.target.files)}
+        onChange={(e) => void handleFiles(e.target.files)}
       />
     </div>
   );

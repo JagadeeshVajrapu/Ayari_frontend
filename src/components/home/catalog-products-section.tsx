@@ -14,6 +14,8 @@ interface CatalogProductsSectionProps {
   featured?: boolean;
   sort?: 'newest' | 'featured';
   limit?: number;
+  /** Deep-link for Shop All — defaults based on featured/sort. */
+  shopAllHref?: string;
 }
 
 export async function CatalogProductsSection({
@@ -23,6 +25,7 @@ export async function CatalogProductsSection({
   featured = false,
   sort = 'newest',
   limit = 8,
+  shopAllHref,
 }: CatalogProductsSectionProps) {
   const { items } = await fetchProducts({ featured, sort, limit, page: 1 }).catch(() => ({
     items: [],
@@ -33,6 +36,10 @@ export async function CatalogProductsSection({
     return null;
   }
 
+  const href =
+    shopAllHref ??
+    (featured ? '/shop?featured=true' : sort === 'newest' ? '/shop?sort=newest' : '/shop');
+
   return (
     <section className="section-padding">
       <div className="container-premium">
@@ -40,7 +47,7 @@ export async function CatalogProductsSection({
           <SectionHeading eyebrow={eyebrow} title={title} description={description} />
           <ScrollReveal delay={0.2}>
             <Button variant="champagne" asChild>
-              <Link href="/shop">
+              <Link href={href}>
                 Shop All
                 <ArrowRight className="h-4 w-4" />
               </Link>

@@ -2,28 +2,42 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Minus, Plus, Heart, ShoppingBag, Zap, Share2 } from 'lucide-react';
+import { Minus, Plus, Heart, ShoppingBag, Zap } from 'lucide-react';
 import { StarRating } from '@/features/shop/components/star-rating';
-import { formatPrice, useShopStore } from '@/features/shop/stores/shop.store';
+import { useShopStore } from '@/features/shop/stores/shop.store';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { ProductPrice } from '@/components/common/product-price';
+import { ProductVariationSelectors } from './product-variation-selectors';
 import { ShareProduct } from './share-product';
+import type { ProductVariationState } from '@/features/product/hooks/use-product-variations';
 import type { ListingProduct } from '@/types/product.types';
 import { cn } from '@/lib/utils';
 
 interface ProductBuyBoxProps {
   product: ListingProduct;
+  variation: ProductVariationState;
   compact?: boolean;
   onBuyNow?: () => void;
 }
 
-export function ProductBuyBox({ product, compact = false, onBuyNow }: ProductBuyBoxProps) {
+export function ProductBuyBox({ product, variation, compact = false, onBuyNow }: ProductBuyBoxProps) {
   const [quantity, setQuantity] = useState(1);
-  const [selectedSize, setSelectedSize] = useState(product.sizes?.[0] ?? 'One Size');
-  const [selectedColor, setSelectedColor] = useState(product.colors?.[0]?.name ?? '');
   const [addedToCart, setAddedToCart] = useState(false);
   const { addToCart, toggleWishlist, isInWishlist } = useShopStore();
   const wished = isInWishlist(product.slug);
+  const maxQty = Math.max(1, product.stockCount || 1);
+
+  const {
+    displayTitle,
+    activePrice,
+    activeMrp,
+    discountPercent,
+    selectedColorId,
+    selectedSetId,
+    setSelectedColor,
+    setSelectedSet,
+  } = variation;
 
   const handleAddToCart = () => {
     if (!product.inStock) return;
@@ -31,6 +45,10 @@ export function ProductBuyBox({ product, compact = false, onBuyNow }: ProductBuy
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 2000);
   };
+
+  const hasVariations =
+    (product.colorVariants?.length ?? 0) > 0 ||
+    (product.setVariants?.length ?? 0) > 0;
 
   return (
     <div className={cn(!compact && 'space-y-6')}>
@@ -41,32 +59,25 @@ export function ProductBuyBox({ product, compact = false, onBuyNow }: ProductBuy
               {product.brand}
             </span>
             {product.isNew && <Badge>New Arrival</Badge>}
-            {product.discountPercent && (
-              <Badge variant="default">-{product.discountPercent}%</Badge>
+            {discountPercent != null && discountPercent > 0 && (
+              <Badge variant="default">{discountPercent}% off</Badge>
             )}
           </div>
 
-          <h1 className="mt-2 font-display text-display-md text-foreground">{product.name}</h1>
+          <h1 className="mt-2 font-display text-display-md text-foreground">{displayTitle}</h1>
 
           <div className="mt-3 flex items-center gap-3">
             <StarRating rating={product.rating} size="md" showValue reviewCount={product.reviewCount} />
           </div>
 
-          <div className="mt-5 flex flex-wrap items-baseline gap-3">
-            <span className="text-2xl font-semibold text-foreground sm:text-3xl">
-              {formatPrice(product.price)}
-            </span>
-            {product.originalPrice && (
-              <>
-                <span className="text-lg text-ink-faint line-through">
-                  {formatPrice(product.originalPrice)}
-                </span>
-                <span className="text-sm font-medium text-green-600 dark:text-green-400">
-                  Save {formatPrice(product.originalPrice - product.price)}
-                </span>
-              </>
-            )}
-          </div>
+          <ProductPrice
+            className="mt-5"
+            size="lg"
+            layout="amazon"
+            price={activePrice}
+            mrp={activeMrp}
+            discountPercent={discountPercent}
+          />
 
           <div className="mt-3 flex items-center gap-2">
             <span
@@ -85,65 +96,38 @@ export function ProductBuyBox({ product, compact = false, onBuyNow }: ProductBuy
       )}
 
       {compact && (
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <p className="font-display text-lg text-foreground">{product.name}</p>
-            <p className="text-sm font-semibold text-foreground">{formatPrice(product.price)}</p>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="truncate font-display text-lg text-foreground">{displayTitle}</p>
+            <ProductPrice
+              size="sm"
+              layout="amazon"
+              price={activePrice}
+              mrp={activeMrp}
+              discountPercent={discountPercent}
+            />
           </div>
           <button
             type="button"
             onClick={() => toggleWishlist(product.slug)}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-border"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border"
           >
             <Heart className={cn('h-4 w-4', wished && 'fill-champagne text-champagne')} />
           </button>
         </div>
       )}
 
-      {product.colors && product.colors.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-xs font-medium tracking-wider text-ink-muted uppercase">
-            Color — <span className="text-foreground">{selectedColor}</span>
-          </p>
-          <div className="flex gap-2">
-            {product.colors.map((color) => (
-              <button
-                key={color.name}
-                type="button"
-                onClick={() => setSelectedColor(color.name)}
-                className={cn(
-                  'h-8 w-8 rounded-full border-2 transition-all hover:scale-110',
-                  selectedColor === color.name ? 'border-champagne ring-2 ring-champagne/30' : 'border-border',
-                )}
-                style={{ backgroundColor: color.hex }}
-                title={color.name}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {product.sizes && product.sizes.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-xs font-medium tracking-wider text-ink-muted uppercase">Size</p>
-          <div className="flex flex-wrap gap-2">
-            {product.sizes.map((size) => (
-              <button
-                key={size}
-                type="button"
-                onClick={() => setSelectedSize(size)}
-                className={cn(
-                  'min-w-[3rem] rounded-xl border px-4 py-2 text-sm transition-all',
-                  selectedSize === size
-                    ? 'border-ink bg-ink text-cream dark:border-cream dark:bg-cream dark:text-ink'
-                    : 'border-border text-ink-muted hover:border-champagne',
-                )}
-              >
-                {size}
-              </button>
-            ))}
-          </div>
-        </div>
+      {hasVariations && !compact && (
+        <ProductVariationSelectors
+          basePrice={product.price}
+          baseMrp={product.originalPrice}
+          colorVariants={product.colorVariants}
+          setVariants={product.setVariants}
+          selectedColorId={selectedColorId}
+          selectedSetId={selectedSetId}
+          onColorChange={setSelectedColor}
+          onSetChange={setSelectedSet}
+        />
       )}
 
       <div className="flex items-center gap-3">
@@ -153,14 +137,16 @@ export function ProductBuyBox({ product, compact = false, onBuyNow }: ProductBuy
             type="button"
             onClick={() => setQuantity((q) => Math.max(1, q - 1))}
             className="flex h-10 w-10 items-center justify-center text-ink-muted hover:text-foreground"
+            aria-label="Decrease quantity"
           >
             <Minus className="h-4 w-4" />
           </button>
-          <span className="w-10 text-center text-sm font-medium">{quantity}</span>
+          <span className="w-10 text-center text-sm font-medium tabular-nums">{quantity}</span>
           <button
             type="button"
-            onClick={() => setQuantity((q) => Math.min(product.stockCount || 10, q + 1))}
+            onClick={() => setQuantity((q) => Math.min(maxQty, q + 1))}
             className="flex h-10 w-10 items-center justify-center text-ink-muted hover:text-foreground"
+            aria-label="Increase quantity"
           >
             <Plus className="h-4 w-4" />
           </button>

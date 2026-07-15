@@ -6,7 +6,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { X, ShoppingBag, Heart } from 'lucide-react';
 import { StarRating } from './star-rating';
-import { formatPrice, useShopStore } from '@/features/shop/stores/shop.store';
+import { ProductPrice } from '@/components/common/product-price';
+import { useShopStore } from '@/features/shop/stores/shop.store';
 import type { ListingProduct } from '@/types/product.types';
 import { Button } from '@/components/ui/button';
 
@@ -66,16 +67,14 @@ export function QuickViewModal({ product, onClose }: QuickViewModalProps) {
                       <StarRating rating={product.rating} showValue reviewCount={product.reviewCount} />
                     </div>
 
-                    <div className="mt-4 flex items-center gap-3">
-                      <span className="text-xl font-semibold text-foreground">
-                        {formatPrice(product.price)}
-                      </span>
-                      {product.originalPrice && (
-                        <span className="text-sm text-ink-faint line-through">
-                          {formatPrice(product.originalPrice)}
-                        </span>
-                      )}
-                    </div>
+                    <ProductPrice
+                      className="mt-4"
+                      size="md"
+                      layout="stacked"
+                      price={product.price}
+                      mrp={product.originalPrice}
+                      discountPercent={product.discountPercent}
+                    />
 
                     <Dialog.Description className="mt-4 text-sm leading-relaxed text-ink-muted">
                       {product.description}

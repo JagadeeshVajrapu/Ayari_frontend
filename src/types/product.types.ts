@@ -1,3 +1,5 @@
+import type { ColorVariant, SetVariant } from '@/lib/product-variations';
+
 export interface ProductSpecification {
   label: string;
   value: string;
@@ -24,6 +26,8 @@ export interface ListingProduct {
   originalPrice?: number;
   image: string;
   images: string[];
+  /** Extra gallery images shown under the main PDP gallery */
+  featuredImages?: string[];
   category: string;
   brand: string;
   rating: number;
@@ -36,7 +40,8 @@ export interface ListingProduct {
   createdAt: string;
   specifications?: ProductSpecification[];
   sizes?: string[];
-  colors?: { name: string; hex: string }[];
+  colorVariants?: ColorVariant[];
+  setVariants?: SetVariant[];
   sku?: string;
 }
 
@@ -58,6 +63,8 @@ export interface ProductFilters {
   priceMax: number;
   minRating: number;
   inStockOnly: boolean;
+  /** When true, only products marked isFeatured are returned. */
+  featuredOnly: boolean;
   sort: SortOption;
   page: number;
   view: ViewMode;
@@ -71,6 +78,7 @@ export const DEFAULT_FILTERS: ProductFilters = {
   priceMax: 100000,
   minRating: 0,
   inStockOnly: false,
+  featuredOnly: false,
   sort: 'featured',
   page: 1,
   view: 'grid',

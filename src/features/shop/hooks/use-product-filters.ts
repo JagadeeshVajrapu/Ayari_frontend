@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import type { ListingProduct, ProductFilters, SortOption, ViewMode } from '@/types/product.types';
-import { DEFAULT_FILTERS, PAGE_SIZE } from '@/types/product.types';
+import { PAGE_SIZE } from '@/types/product.types';
 import { PRICE_RANGE } from '@/lib/catalog-constants';
 import { catalogService } from '@/services/catalog.service';
 import { mapApiProductToListing } from '@/lib/catalog-mappers';
@@ -17,6 +17,7 @@ function parseFilters(params: URLSearchParams): ProductFilters {
     priceMax: Number(params.get('priceMax')) || PRICE_RANGE.max,
     minRating: 0,
     inStockOnly: params.get('inStock') === 'true',
+    featuredOnly: params.get('featured') === 'true',
     sort: (params.get('sort') as SortOption) || 'featured',
     page: Number(params.get('page')) || 1,
     view: (params.get('view') as ViewMode) || 'grid',
@@ -30,6 +31,7 @@ function filtersToParams(filters: ProductFilters): URLSearchParams {
   if (filters.priceMin > PRICE_RANGE.min) params.set('priceMin', String(filters.priceMin));
   if (filters.priceMax < PRICE_RANGE.max) params.set('priceMax', String(filters.priceMax));
   if (filters.inStockOnly) params.set('inStock', 'true');
+  if (filters.featuredOnly) params.set('featured', 'true');
   if (filters.sort !== 'featured') params.set('sort', filters.sort);
   if (filters.page > 1) params.set('page', String(filters.page));
   if (filters.view !== 'grid') params.set('view', filters.view);
@@ -70,6 +72,7 @@ export function useProductFilters() {
         limit: PAGE_SIZE,
         search: filters.search || undefined,
         category: categoryParam,
+        featured: filters.featuredOnly || undefined,
         inStock: filters.inStockOnly || undefined,
         priceMin: filters.priceMin > PRICE_RANGE.min ? filters.priceMin : undefined,
         priceMax: filters.priceMax < PRICE_RANGE.max ? filters.priceMax : undefined,
@@ -124,6 +127,7 @@ export function useProductFilters() {
     if (filters.categories.length) count += filters.categories.length;
     if (filters.priceMin > PRICE_RANGE.min || filters.priceMax < PRICE_RANGE.max) count++;
     if (filters.inStockOnly) count++;
+    if (filters.featuredOnly) count++;
     return count;
   }, [filters]);
 
