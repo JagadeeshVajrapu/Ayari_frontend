@@ -5,7 +5,10 @@ export const SITE_NAME = 'Ayari Creations';
 export const SITE_TAGLINE = 'Curated for the Discerning';
 export const SITE_DESCRIPTION =
   'Discover meticulously crafted luxury fashion. Premium ecommerce experience with timeless elegance.';
-export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3001';
+export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3001').replace(
+  /\/+$/,
+  '',
+);
 
 type PageMetadataOptions = {
   title: string;
@@ -24,8 +27,9 @@ export function createPageMetadata({
   noIndex = false,
   type = 'website',
 }: PageMetadataOptions): Metadata {
-  const url = `${SITE_URL}${path}`;
-  const imageUrl = image.startsWith('http') ? image : `${SITE_URL}${image}`;
+  const normalizedPath = path.startsWith('/') ? path : path ? `/${path}` : '';
+  const url = `${SITE_URL}${normalizedPath || '/'}`;
+  const imageUrl = image.startsWith('http') ? image : `${SITE_URL}${image.startsWith('/') ? image : `/${image}`}`;
 
   return {
     title,

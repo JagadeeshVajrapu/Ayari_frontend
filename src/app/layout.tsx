@@ -3,6 +3,8 @@ import { Cormorant_Garamond, Inter } from 'next/font/google';
 import { Providers } from '@/providers/theme-provider';
 import { SkipToContent } from '@/components/a11y/skip-to-content';
 import { JsonLd } from '@/components/seo/json-ld';
+import { AppShell } from '@/components/layout/app-shell';
+import { ChunkLoadErrorRecovery } from '@/components/system/chunk-load-error-recovery';
 import { organizationJsonLd, websiteJsonLd } from '@/lib/structured-data';
 import { rootMetadata } from '@/lib/seo';
 import '@/styles/globals.css';
@@ -42,7 +44,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <SkipToContent />
         <JsonLd data={organizationJsonLd()} />
         <JsonLd data={websiteJsonLd()} />
-        <Providers>{children}</Providers>
+        <Providers>
+          <ChunkLoadErrorRecovery />
+          <AppShell>{children}</AppShell>
+        </Providers>
       </body>
     </html>
   );

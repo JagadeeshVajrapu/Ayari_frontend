@@ -5,6 +5,11 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(__dirname),
   poweredByHeader: false,
   compress: true,
+  // Stable build id helps Hostinger deploys detect full new artifact sets
+  generateBuildId: async () => {
+    if (process.env.BUILD_ID) return process.env.BUILD_ID;
+    return `ayari-${Date.now()}`;
+  },
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -64,7 +69,8 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        source: '/_next/static/(.*)',
+        // Hashed assets only — never cache missing/404 responses as immutable on the edge
+        source: '/_next/static/:path*',
         headers: [
           { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
         ],

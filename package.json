@@ -6,7 +6,9 @@
     "predev": "node scripts/prepare-dev.mjs",
     "dev": "next dev --turbopack -p 3001",
     "dev:clean": "node scripts/prepare-dev.mjs --clean && next dev --turbopack -p 3001",
-    "build": "next build",
+    "build": "next build && node scripts/verify-build.mjs",
+    "build:only": "next build",
+    "verify:build": "node scripts/verify-build.mjs",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit"
