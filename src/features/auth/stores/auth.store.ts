@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import axios from 'axios';
 import type { AuthUser } from '@/services/auth.service';
 import { authService } from '@/services/auth.service';
 
@@ -8,6 +9,7 @@ interface AuthState {
   accessToken: string | null;
   isHydrated: boolean;
   setSession: (user: AuthUser, accessToken: string) => void;
+  setAccessToken: (accessToken: string) => void;
   setUser: (user: AuthUser) => void;
   clearSession: () => void;
   setHydrated: (value: boolean) => void;
@@ -24,6 +26,8 @@ export const useAuthStore = create<AuthState>()(
 
       setSession: (user, accessToken) => set({ user, accessToken }),
 
+      setAccessToken: (accessToken) => set({ accessToken }),
+
       setUser: (user) => set({ user }),
 
       clearSession: () => set({ user: null, accessToken: null }),
@@ -37,8 +41,11 @@ export const useAuthStore = create<AuthState>()(
         try {
           const { data } = await authService.getMe();
           set({ user: data.data.user });
-        } catch {
-          set({ user: null, accessToken: null });
+        } catch (error) {
+          // Only clear session on definitive auth failure — not network/server blips
+          if (axios.isAxiosError(error) && error.response?.status === 401) {
+            set({ user: null, accessToken: null });
+          }
         }
       },
 
