@@ -14,6 +14,7 @@ export interface CatalogQueryParams {
   limit?: number;
   search?: string;
   category?: string;
+  categories?: string[];
   featured?: boolean;
   inStock?: boolean;
   priceMin?: number;
@@ -28,7 +29,8 @@ export const catalogService = {
         page: params?.page,
         limit: params?.limit,
         search: params?.search,
-        category: params?.category,
+        category: params?.categories?.length ? undefined : params?.category,
+        categories: params?.categories?.length ? params.categories.join(',') : undefined,
         featured: params?.featured ? 'true' : undefined,
         inStock: params?.inStock ? 'true' : undefined,
         priceMin: params?.priceMin,

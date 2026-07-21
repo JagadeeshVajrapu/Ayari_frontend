@@ -27,6 +27,7 @@ export async function fetchProducts(params?: {
   limit?: number;
   search?: string;
   category?: string;
+  categories?: string[];
   featured?: boolean;
   inStock?: boolean;
   priceMin?: number;
@@ -37,7 +38,11 @@ export async function fetchProducts(params?: {
   if (params?.page) searchParams.set('page', String(params.page));
   if (params?.limit) searchParams.set('limit', String(params.limit));
   if (params?.search) searchParams.set('search', params.search);
-  if (params?.category) searchParams.set('category', params.category);
+  if (params?.categories?.length) {
+    searchParams.set('categories', params.categories.join(','));
+  } else if (params?.category) {
+    searchParams.set('category', params.category);
+  }
   if (params?.featured) searchParams.set('featured', 'true');
   if (params?.inStock) searchParams.set('inStock', 'true');
   if (params?.priceMin !== undefined) searchParams.set('priceMin', String(params.priceMin));

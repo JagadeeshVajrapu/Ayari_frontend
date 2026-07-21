@@ -25,7 +25,8 @@ export function ProductListing() {
     currentPage,
     isLoading,
     activeFilterCount,
-    availableCategories,
+    categoryOptions,
+    selectedCategoryLabel,
     fetchError,
   } = useProductFilters();
 
@@ -48,6 +49,7 @@ export function ProductListing() {
           filters={filters}
           totalCount={totalCount}
           activeFilterCount={activeFilterCount}
+          categoryLabel={selectedCategoryLabel}
           onSearch={handleSearch}
           onSort={(sort) => setFilters({ sort })}
           onViewChange={(view) => setFilters({ view })}
@@ -68,7 +70,7 @@ export function ProductListing() {
                 onChange={setFilters}
                 onReset={resetFilters}
                 activeCount={activeFilterCount}
-                categories={availableCategories}
+                categories={categoryOptions}
               />
             </div>
           </aside>
@@ -127,7 +129,7 @@ export function ProductListing() {
         onChange={setFilters}
         onReset={resetFilters}
         activeCount={activeFilterCount}
-        categories={availableCategories}
+        categories={categoryOptions}
       />
 
       <QuickViewModal product={quickViewProduct} onClose={() => setQuickViewProduct(null)} />

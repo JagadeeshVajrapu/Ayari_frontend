@@ -4,7 +4,7 @@ import { fetchAllProductSlugs } from '@/lib/server-catalog';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
-  const staticRoutes = ['', '/shop', '/cart', '/login', '/register'].map((path) => ({
+  const staticRoutes = ['', '/shop', '/categories', '/cart', '/login', '/register'].map((path) => ({
     url: `${SITE_URL}${path}`,
     lastModified: now,
     changeFrequency: path === '' ? ('daily' as const) : ('weekly' as const),

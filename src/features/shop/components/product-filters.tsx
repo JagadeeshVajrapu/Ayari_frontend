@@ -2,11 +2,12 @@
 
 import * as Checkbox from '@radix-ui/react-checkbox';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, ChevronDown, X } from 'lucide-react';
+import { Check, ChevronDown, Star, X } from 'lucide-react';
 import { PriceRangeSlider } from './price-range-slider';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import type { ProductFilters } from '@/types/product.types';
+import type { ShopCategoryOption } from '@/features/shop/hooks/use-product-filters';
 import { cn } from '@/lib/utils';
 
 interface FilterSectionProps {
@@ -32,7 +33,7 @@ interface ProductFiltersPanelProps {
   onChange: (updates: Partial<ProductFilters>) => void;
   onReset: () => void;
   activeCount: number;
-  categories: string[];
+  categories: ShopCategoryOption[];
   className?: string;
 }
 
@@ -44,10 +45,10 @@ export function ProductFiltersPanel({
   categories,
   className,
 }: ProductFiltersPanelProps) {
-  const toggleCategory = (value: string) => {
-    const next = filters.categories.includes(value)
-      ? filters.categories.filter((entry) => entry !== value)
-      : [...filters.categories, value];
+  const toggleCategory = (slug: string) => {
+    const next = filters.categories.includes(slug)
+      ? filters.categories.filter((entry) => entry !== slug)
+      : [...filters.categories, slug];
     onChange({ categories: next });
   };
 
@@ -73,19 +74,19 @@ export function ProductFiltersPanel({
             <div className="space-y-2">
               {categories.map((category) => (
                 <label
-                  key={category}
+                  key={category.slug}
                   className="flex cursor-pointer items-center gap-3 text-sm text-ink-muted hover:text-foreground"
                 >
                   <Checkbox.Root
-                    checked={filters.categories.includes(category)}
-                    onCheckedChange={() => toggleCategory(category)}
+                    checked={filters.categories.includes(category.slug)}
+                    onCheckedChange={() => toggleCategory(category.slug)}
                     className="flex h-4 w-4 items-center justify-center rounded border border-border data-[state=checked]:border-champagne data-[state=checked]:bg-champagne"
                   >
                     <Checkbox.Indicator>
                       <Check className="h-3 w-3 text-ink" />
                     </Checkbox.Indicator>
                   </Checkbox.Root>
-                  {category}
+                  {category.name}
                 </label>
               ))}
             </div>
@@ -100,6 +101,42 @@ export function ProductFiltersPanel({
           max={filters.priceMax}
           onChange={(priceMin, priceMax) => onChange({ priceMin, priceMax })}
         />
+      </FilterSection>
+
+      <Separator />
+
+      <FilterSection title="Customer Rating">
+        <div className="space-y-1.5">
+          {[4, 3, 2].map((rating) => (
+            <button
+              key={rating}
+              type="button"
+              onClick={() => onChange({ minRating: filters.minRating === rating ? 0 : rating })}
+              aria-pressed={filters.minRating === rating}
+              className={cn(
+                'flex w-full items-center gap-2 rounded-xl px-2 py-2 text-sm transition-colors',
+                filters.minRating === rating
+                  ? 'bg-champagne/20 text-foreground'
+                  : 'text-ink-muted hover:bg-muted hover:text-foreground',
+              )}
+            >
+              <span className="flex" aria-hidden="true">
+                {Array.from({ length: 5 }, (_, index) => (
+                  <Star
+                    key={index}
+                    className={cn(
+                      'h-3.5 w-3.5',
+                      index < rating
+                        ? 'fill-champagne text-champagne-dark'
+                        : 'text-border',
+                    )}
+                  />
+                ))}
+              </span>
+              {rating} &amp; up
+            </button>
+          ))}
+        </div>
       </FilterSection>
 
       <Separator />

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -7,6 +8,7 @@ import { Heart, ShoppingBag } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ProductPrice } from '@/components/common/product-price';
+import { useShopStore } from '@/features/shop/stores/shop.store';
 import { cn } from '@/lib/utils';
 
 export interface Product {
@@ -20,6 +22,7 @@ export interface Product {
   isNew?: boolean;
   isFeatured?: boolean;
   discountPercent?: number;
+  inStock?: boolean;
 }
 
 interface ProductCardProps {
@@ -35,6 +38,26 @@ export function ProductCard({
   index = 0,
   variant = 'default',
 }: ProductCardProps) {
+  const { toggleWishlist, isInWishlist, addToCart } = useShopStore();
+  const [addedToCart, setAddedToCart] = useState(false);
+  const wished = isInWishlist(product.slug);
+  const inStock = product.inStock ?? true;
+
+  const handleWishlist = (event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    toggleWishlist(product.slug);
+  };
+
+  const handleAddToCart = (event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!inStock) return;
+    addToCart(product.slug, 1);
+    setAddedToCart(true);
+    setTimeout(() => setAddedToCart(false), 1500);
+  };
+
   return (
     <motion.article
       initial={{ opacity: 0, y: 30, scale: 0.97 }}
@@ -91,26 +114,30 @@ export function ProductCard({
               </Badge>
             )}
 
-            <div className="absolute right-4 bottom-4 left-4 flex translate-y-4 gap-2 opacity-0 transition-all duration-500 group-hover:translate-y-0 group-hover:opacity-100">
+            <div className="absolute right-4 bottom-4 left-4 flex translate-y-4 gap-2 opacity-100 transition-all duration-500 md:translate-y-4 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100">
               <Button
                 type="button"
                 variant="glass"
                 size="icon"
-                aria-label="Add to wishlist"
-                className="h-10 w-10 hover:scale-110"
-                onClick={(e) => e.preventDefault()}
+                aria-label={wished ? 'Remove from wishlist' : 'Add to wishlist'}
+                className={cn('h-10 w-10 hover:scale-110', wished && 'bg-champagne/20')}
+                onClick={handleWishlist}
               >
-                <Heart className="h-4 w-4" />
+                <Heart className={cn('h-4 w-4', wished && 'fill-champagne text-champagne')} />
               </Button>
               <Button
                 type="button"
                 size="sm"
                 aria-label="Add to cart"
-                className="h-10 flex-1 text-xs tracking-wider uppercase"
-                onClick={(e) => e.preventDefault()}
+                disabled={!inStock}
+                className={cn(
+                  'h-10 flex-1 text-xs tracking-wider uppercase',
+                  addedToCart && 'bg-green-700 text-cream',
+                )}
+                onClick={handleAddToCart}
               >
                 <ShoppingBag className="h-3.5 w-3.5" />
-                Add to Bag
+                {addedToCart ? 'Added!' : inStock ? 'Add to Bag' : 'Sold Out'}
               </Button>
             </div>
           </div>
@@ -120,7 +147,7 @@ export function ProductCard({
           <p className="text-[10px] tracking-[0.15em] text-ink-faint uppercase">
             {product.category}
           </p>
-          <h3 className="font-display text-base text-ink transition-colors group-hover:text-champagne-dark md:text-lg">
+          <h3 className="line-clamp-2 font-display text-base text-ink transition-colors group-hover:text-champagne-dark md:text-lg">
             {product.name}
           </h3>
           <ProductPrice

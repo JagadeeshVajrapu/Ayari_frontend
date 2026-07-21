@@ -77,7 +77,7 @@ export function ListingProductCard({ product, index, onQuickView }: ListingProdu
           </div>
         </Link>
 
-        <div className="absolute top-3 right-3 flex flex-col gap-1.5 opacity-0 transition-all duration-300 group-hover:opacity-100">
+        <div className="absolute top-3 right-3 flex flex-col gap-1.5 opacity-100 transition-all duration-300 md:opacity-0 md:group-hover:opacity-100">
           <button
             type="button"
             suppressHydrationWarning
@@ -86,7 +86,8 @@ export function ListingProductCard({ product, index, onQuickView }: ListingProdu
               'flex h-9 w-9 items-center justify-center rounded-full glass transition-all hover:scale-110',
               wished && 'bg-champagne/20',
             )}
-            aria-label="Toggle wishlist"
+            aria-label={wished ? `Remove ${product.name} from wishlist` : `Add ${product.name} to wishlist`}
+            title={wished ? 'Remove from wishlist' : 'Add to wishlist'}
           >
             <Heart className={cn('h-4 w-4', wished && 'fill-champagne text-champagne')} />
           </button>
@@ -141,7 +142,7 @@ export function ListingProductCard({ product, index, onQuickView }: ListingProdu
           <StarRating rating={product.rating} showValue reviewCount={product.reviewCount} />
         </div>
         <Link href={`/products/${product.slug}`}>
-          <h3 className="font-display text-base text-foreground transition-colors hover:text-champagne-dark md:text-lg">
+          <h3 className="line-clamp-2 min-h-12 font-display text-base text-foreground transition-colors hover:text-champagne-dark md:text-lg">
             {product.name}
           </h3>
         </Link>

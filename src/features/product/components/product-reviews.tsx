@@ -15,7 +15,10 @@ interface ProductReviewsProps {
 export function ProductReviews({ product, reviews }: ProductReviewsProps) {
   const distribution = [5, 4, 3, 2, 1].map((star) => ({
     star,
-    percent: star === 5 ? 72 : star === 4 ? 20 : star === 3 ? 5 : 3,
+    percent:
+      reviews.length > 0
+        ? Math.round((reviews.filter((review) => review.rating === star).length / reviews.length) * 100)
+        : 0,
   }));
 
   return (
@@ -50,6 +53,14 @@ export function ProductReviews({ product, reviews }: ProductReviewsProps) {
         </div>
 
         <div className="flex-1 space-y-4">
+          {reviews.length === 0 && (
+            <div className="rounded-3xl border border-dashed border-border bg-muted/20 p-8 text-center">
+              <p className="font-medium text-foreground">No reviews yet</p>
+              <p className="mt-1 text-sm text-ink-muted">
+                Be the first customer to share feedback about this product.
+              </p>
+            </div>
+          )}
           {reviews.map((review, i) => (
             <motion.article
               key={review.id}
