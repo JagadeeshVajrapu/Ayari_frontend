@@ -1,7 +1,41 @@
 import type { ListingProduct } from '@/types/product.types';
 import { PRODUCT_PLACEHOLDER } from '@/lib/catalog-constants';
 import { resolveMediaUrl } from '@/lib/media';
-import type { ColorVariant, SetVariant } from '@/lib/product-variations';
+import type { ColorVariant, ProductVariant, SetVariant, VariantType } from '@/lib/product-variations';
+import { variantsToColorVariants, variantsToSetVariants } from '@/lib/product-variations';
+
+export interface ApiProductVariant {
+  id: string;
+  sku: string;
+  name: string;
+  colorHex?: string | null;
+  variantType: VariantType;
+  price?: number | null;
+  compareAtPrice?: number | null;
+  stockQuantity: number;
+  sortOrder?: number;
+  isDefault: boolean;
+  isActive: boolean;
+  image?: string | null;
+  images: Array<{
+    id: string;
+    url: string;
+    altText: string | null;
+    sortOrder?: number;
+    cloudinaryPublicId?: string | null;
+    folder?: string | null;
+    isPrimary?: boolean;
+  }>;
+  galleryImages: Array<{
+    id: string;
+    url: string;
+    altText: string | null;
+    sortOrder?: number;
+    cloudinaryPublicId?: string | null;
+    folder?: string | null;
+    isPrimary?: boolean;
+  }>;
+}
 
 export interface ApiProduct {
   id: string;
@@ -33,6 +67,7 @@ export interface ApiProduct {
     price?: number;
     compareAtPrice?: number;
   }>;
+  variants?: ApiProductVariant[];
   image: string | null;
   images: Array<{ id: string; url: string; altText: string | null; isPrimary: boolean; sortOrder?: number; cloudinaryPublicId?: string | null }>;
   featuredImages: Array<{ id: string; url: string; altText: string | null; sortOrder?: number; cloudinaryPublicId?: string | null }>;
@@ -53,9 +88,49 @@ export interface ApiCategory {
 }
 
 export function mapApiProductToListing(product: ApiProduct): ListingProduct {
-  const mrp = product.compareAtPrice;
+  const mappedVariants: ProductVariant[] | undefined = product.variants?.length
+    ? product.variants.map((variant) => ({
+        id: variant.id,
+        sku: variant.sku,
+        name: variant.name,
+        colorHex: variant.colorHex,
+        variantType: variant.variantType,
+        price: variant.price,
+        compareAtPrice: variant.compareAtPrice,
+        stockQuantity: variant.stockQuantity,
+        sortOrder: variant.sortOrder,
+        isDefault: variant.isDefault,
+        isActive: variant.isActive,
+        image: variant.image ? resolveMediaUrl(variant.image, PRODUCT_PLACEHOLDER) : null,
+        images: variant.images.map((img) => ({
+          id: img.id,
+          url: resolveMediaUrl(img.url, PRODUCT_PLACEHOLDER),
+          altText: img.altText,
+          sortOrder: img.sortOrder,
+          cloudinaryPublicId: img.cloudinaryPublicId,
+          folder: img.folder,
+          isPrimary: img.isPrimary,
+        })),
+        galleryImages: variant.galleryImages.map((img) => ({
+          id: img.id,
+          url: resolveMediaUrl(img.url, PRODUCT_PLACEHOLDER),
+          altText: img.altText,
+          sortOrder: img.sortOrder,
+          cloudinaryPublicId: img.cloudinaryPublicId,
+          folder: img.folder,
+          isPrimary: img.isPrimary,
+        })),
+      }))
+    : undefined;
+
+  const defaultVariant =
+    mappedVariants?.find((v) => v.isDefault) ?? mappedVariants?.[0] ?? null;
+
+  const effectivePrice = defaultVariant?.price ?? product.price;
+  const effectiveMrp = defaultVariant?.compareAtPrice ?? product.compareAtPrice;
+  const mrp = effectiveMrp;
   const discountPercent =
-    mrp && mrp > product.price ? Math.round(((mrp - product.price) / mrp) * 100) : undefined;
+    mrp && mrp > effectivePrice ? Math.round(((mrp - effectivePrice) / mrp) * 100) : undefined;
 
   const productImageUrls = (product.images?.length
     ? product.images.map((image) => image.url)
@@ -69,15 +144,25 @@ export function mapApiProductToListing(product: ApiProduct): ListingProduct {
     : []
   ).map((url) => resolveMediaUrl(url, PRODUCT_PLACEHOLDER));
 
+  const variantGallery = defaultVariant
+    ? [
+        ...defaultVariant.images.map((img) => img.url),
+        ...defaultVariant.galleryImages.map((img) => img.url),
+      ]
+    : [];
+
   const images =
-    productImageUrls.length > 0
-      ? productImageUrls
-      : featuredImageUrls.length > 0
-        ? featuredImageUrls
-        : [PRODUCT_PLACEHOLDER];
+    variantGallery.length > 0
+      ? variantGallery
+      : productImageUrls.length > 0
+        ? productImageUrls
+        : featuredImageUrls.length > 0
+          ? featuredImageUrls
+          : [PRODUCT_PLACEHOLDER];
 
   const createdAt = new Date(product.createdAt);
   const isNew = Date.now() - createdAt.getTime() < 30 * 24 * 60 * 60 * 1000;
+  const stockCount = defaultVariant?.stockQuantity ?? product.stockQuantity;
 
   return {
     id: product.id,
@@ -85,8 +170,8 @@ export function mapApiProductToListing(product: ApiProduct): ListingProduct {
     slug: product.slug,
     description: product.description ?? '',
     longDescription: product.description ?? '',
-    price: product.price,
-    originalPrice: mrp && mrp > product.price ? mrp : undefined,
+    price: effectivePrice,
+    originalPrice: mrp && mrp > effectivePrice ? mrp : undefined,
     image: images[0],
     images,
     featuredImages: featuredImageUrls,
@@ -94,16 +179,21 @@ export function mapApiProductToListing(product: ApiProduct): ListingProduct {
     brand: 'AYARI',
     rating: 0,
     reviewCount: 0,
-    inStock: product.stockQuantity > 0,
-    stockCount: product.stockQuantity,
+    inStock: stockCount > 0,
+    stockCount,
     isNew,
     isFeatured: product.isFeatured,
     discountPercent,
     createdAt: product.createdAt,
-    sku: product.sku,
+    sku: defaultVariant?.sku ?? product.sku,
     sizes: product.sizes?.length ? product.sizes : undefined,
-    colorVariants: (product.colorVariants as ColorVariant[] | undefined) ?? [],
-    setVariants: (product.setVariants as SetVariant[] | undefined) ?? [],
+    variants: mappedVariants,
+    colorVariants: mappedVariants?.length
+      ? variantsToColorVariants(mappedVariants)
+      : ((product.colorVariants as ColorVariant[] | undefined) ?? []),
+    setVariants: mappedVariants?.length
+      ? variantsToSetVariants(mappedVariants)
+      : ((product.setVariants as SetVariant[] | undefined) ?? []),
   };
 }
 

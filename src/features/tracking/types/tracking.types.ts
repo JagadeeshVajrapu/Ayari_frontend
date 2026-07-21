@@ -48,6 +48,9 @@ export interface OrderTrackingItem {
   id: string;
   productName: string;
   productSku: string;
+  variantId?: string | null;
+  variantName?: string | null;
+  variantImageUrl?: string | null;
   quantity: number;
   unitPrice: number;
   totalPrice: number;

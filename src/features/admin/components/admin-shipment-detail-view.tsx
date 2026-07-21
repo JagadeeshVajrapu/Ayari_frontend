@@ -435,7 +435,10 @@ export function AdminShipmentDetailView({ shipmentId }: AdminShipmentDetailViewP
                 {shipment.order.items.map((item) => (
                   <div key={item.id} className="flex justify-between gap-4 py-3 text-sm">
                     <div>
-                      <p className="font-medium">{item.productName}</p>
+                      <p className="font-medium">
+                        {item.productName}
+                        {item.variantName ? ` (${item.variantName})` : ''}
+                      </p>
                       <p className="text-xs text-muted-foreground">
                         SKU: {item.productSku} · Qty: {item.quantity}
                       </p>

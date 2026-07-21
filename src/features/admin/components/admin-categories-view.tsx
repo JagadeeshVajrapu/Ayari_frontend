@@ -54,6 +54,8 @@ function CategoryProductsPanel({
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null);
   const [productForm, setProductForm] = useState(emptyProductForm(category.id));
@@ -105,13 +107,24 @@ function CategoryProductsPanel({
   };
 
   const handleDeleteProduct = async (product: AdminProduct) => {
-    if (!window.confirm(`Remove "${product.name}" from the catalog?`)) return;
+    if (
+      !window.confirm(
+        `Permanently delete "${product.name}"?\n\nThe product, variants, and catalog images will be removed. Existing order details are preserved.`,
+      )
+    ) return;
+
+    setDeletingProductId(product.id);
+    setError('');
+    setNotice('');
     try {
-      await adminService.deleteProduct(product.id);
+      const { data } = await adminService.deleteProduct(product.id);
+      setNotice(data.message);
       await loadProducts();
       await onRefreshCategories();
     } catch (err) {
       setError(getApiErrorMessage(err));
+    } finally {
+      setDeletingProductId(null);
     }
   };
 
@@ -138,6 +151,11 @@ function CategoryProductsPanel({
   return (
     <div className="space-y-4 border-t border-border/60 bg-muted/20 px-4 py-4 sm:px-6">
       <AdminErrorBanner message={error} />
+      {notice && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-400">
+          {notice}
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
@@ -215,9 +233,14 @@ function CategoryProductsPanel({
                   size="sm"
                   className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30"
                   onClick={() => handleDeleteProduct(product)}
+                  disabled={deletingProductId === product.id}
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Remove
+                  {deletingProductId === product.id ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-3.5 w-3.5" />
+                  )}
+                  {deletingProductId === product.id ? 'Removing…' : 'Remove'}
                 </Button>
               </div>
             </div>
@@ -244,6 +267,8 @@ export function AdminCategoriesView() {
   const [categories, setCategories] = useState<AdminCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showCategoryForm, setShowCategoryForm] = useState(false);
@@ -319,13 +344,20 @@ export function AdminCategoriesView() {
       );
       return;
     }
-    if (!window.confirm(`Delete category "${category.name}"?`)) return;
+    if (!window.confirm(`Permanently delete empty category "${category.name}"?`)) return;
+
+    setDeletingCategoryId(category.id);
+    setError('');
+    setNotice('');
     try {
       await adminService.deleteCategory(category.id);
+      setNotice(`Category "${category.name}" was permanently deleted.`);
       if (expandedId === category.id) setExpandedId(null);
       await loadCategories();
     } catch (err) {
       setError(getApiErrorMessage(err));
+    } finally {
+      setDeletingCategoryId(null);
     }
   };
 
@@ -352,6 +384,11 @@ export function AdminCategoriesView() {
       <div className="space-y-4">
         <div className="rounded-2xl border border-border/60 bg-card/50 p-4 sm:p-6">
           <AdminErrorBanner message={error} />
+          {notice && (
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-400">
+              {notice}
+            </div>
+          )}
           <AdminSearch
             value={search}
             onChange={setSearch}
@@ -428,9 +465,14 @@ export function AdminCategoriesView() {
                           size="sm"
                           className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30"
                           onClick={() => handleDeleteCategory(category)}
+                          disabled={deletingCategoryId === category.id}
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
-                          Delete
+                          {deletingCategoryId === category.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3.5 w-3.5" />
+                          )}
+                          {deletingCategoryId === category.id ? 'Deleting…' : 'Delete'}
                         </Button>
                       </div>
                     </div>

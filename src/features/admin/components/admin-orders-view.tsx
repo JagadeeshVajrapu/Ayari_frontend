@@ -103,7 +103,18 @@ export function AdminOrdersView() {
                   <p className="text-xs text-muted-foreground">{o.customer.email}</p>
                 </div>
               )},
-              { key: 'items', header: 'Items', render: (o) => o.items.reduce((sum, i) => sum + i.quantity, 0) },
+              { key: 'items', header: 'Items', render: (o) => (
+                <div className="space-y-1">
+                  {o.items.map((item, index) => (
+                    <p key={`${o.id}-item-${index}`} className="text-xs text-muted-foreground">
+                      {item.productName}
+                      {item.variantName ? ` · ${item.variantName}` : ''}
+                      {item.productSku ? ` · SKU ${item.productSku}` : ''}
+                      {' · '}×{item.quantity}
+                    </p>
+                  ))}
+                </div>
+              ) },
               { key: 'status', header: 'Status', render: (o) => (
                 <select
                   value={o.status}

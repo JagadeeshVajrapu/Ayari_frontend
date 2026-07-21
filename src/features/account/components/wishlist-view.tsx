@@ -8,6 +8,7 @@ import { useShopStore, formatPrice } from '@/features/shop/stores/shop.store';
 import { catalogService } from '@/services/catalog.service';
 import { mapApiProductToListing } from '@/lib/catalog-mappers';
 import type { ListingProduct } from '@/types/product.types';
+import { getDefaultVariantId } from '@/lib/product-variations';
 import { Button } from '@/components/ui/button';
 
 export function WishlistView() {
@@ -92,7 +93,7 @@ export function WishlistView() {
               <Button size="sm" variant="outline" onClick={() => toggleWishlist(product.slug)}>
                 Remove
               </Button>
-              <Button size="sm" onClick={() => addToCart(product.slug)}>
+              <Button size="sm" onClick={() => addToCart(product.slug, 1, getDefaultVariantId(product))}>
                 Add to Bag
               </Button>
             </div>

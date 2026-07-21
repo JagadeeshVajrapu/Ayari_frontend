@@ -10,61 +10,11 @@ import {
   AdminImageUploadSection,
   type ImageUploadItem,
 } from './admin-image-upload-section';
-import { AdminProductVariationsSection } from './admin-product-variations-section';
+import { AdminProductVariantsSection } from './admin-product-variants-section';
 import { cn } from '@/lib/utils';
-import type { ColorVariant, SetVariant } from '@/lib/product-variations';
+import type { AdminVariantFormItem } from '@/lib/product-variations';
 
 const UPLOAD_CONCURRENCY = 3;
-
-function isPersistableImageUrl(url?: string): boolean {
-  if (!url) return false;
-  return (
-    url.startsWith('http://') ||
-    url.startsWith('https://') ||
-    url.startsWith('/uploads/')
-  );
-}
-
-/** After upload, remap color image picks (blob / clientId) to permanent URLs. */
-function resolveColorVariantsAfterUpload(
-  colorVariants: ColorVariant[],
-  beforeImages: ImageUploadItem[],
-  afterImages: ImageUploadItem[],
-): ColorVariant[] {
-  return colorVariants.map((color) => {
-    const byClientId = color.imageClientId
-      ? afterImages.find((img) => img.clientId === color.imageClientId)
-      : undefined;
-
-    if (byClientId?.url) {
-      return {
-        ...color,
-        imageUrl: byClientId.url,
-        imageClientId: undefined,
-      };
-    }
-
-    if (!color.imageUrl) {
-      return { ...color, imageClientId: undefined };
-    }
-
-    if (isPersistableImageUrl(color.imageUrl)) {
-      return { ...color, imageClientId: undefined };
-    }
-
-    const matched = beforeImages.find(
-      (img) => img.previewUrl === color.imageUrl || img.url === color.imageUrl,
-    );
-    if (matched) {
-      const uploaded = afterImages.find((img) => img.clientId === matched.clientId);
-      if (uploaded?.url) {
-        return { ...color, imageUrl: uploaded.url, imageClientId: undefined };
-      }
-    }
-
-    return { ...color, imageUrl: undefined, imageClientId: undefined };
-  });
-}
 
 export interface ProductFormValues {
   name: string;
@@ -77,8 +27,11 @@ export interface ProductFormValues {
   compareAtPrice: string;
   isActive: boolean;
   isFeatured: boolean;
-  colorVariants: ColorVariant[];
-  setVariants: SetVariant[];
+/** @deprecated Legacy JSON color variants — use `variants` instead */
+  colorVariants: import('@/lib/product-variations').ColorVariant[];
+  /** @deprecated Legacy JSON set variants — use `variants` instead */
+  setVariants: import('@/lib/product-variations').SetVariant[];
+  variants: AdminVariantFormItem[];
   productImages: ImageUploadItem[];
   featuredImages: ImageUploadItem[];
 }
@@ -95,6 +48,7 @@ export const emptyProductForm = (categoryId = ''): ProductFormValues => ({
   isFeatured: false,
   colorVariants: [],
   setVariants: [],
+  variants: [],
   productImages: [],
   featuredImages: [],
 });
@@ -140,8 +94,34 @@ export function productToFormValues(product: {
   compareAtPrice: number | null;
   isActive: boolean;
   isFeatured: boolean;
-  colorVariants?: ColorVariant[] | null;
-  setVariants?: SetVariant[] | null;
+  colorVariants?: import('@/lib/product-variations').ColorVariant[] | null;
+  setVariants?: import('@/lib/product-variations').SetVariant[] | null;
+  variants?: Array<{
+    id: string;
+    sku: string;
+    name: string;
+    colorHex?: string | null;
+    variantType: string;
+    price?: number | null;
+    compareAtPrice?: number | null;
+    stockQuantity: number;
+    isDefault: boolean;
+    isActive: boolean;
+    images?: Array<{
+      id: string;
+      url: string;
+      cloudinaryPublicId?: string | null;
+      folder?: string | null;
+      isPrimary?: boolean;
+    }>;
+    galleryImages?: Array<{
+      id: string;
+      url: string;
+      cloudinaryPublicId?: string | null;
+      folder?: string | null;
+      isPrimary?: boolean;
+    }>;
+  }> | null;
   images?: Array<{
     id: string;
     url: string;
@@ -168,6 +148,23 @@ export function productToFormValues(product: {
     isFeatured: product.isFeatured,
     colorVariants: product.colorVariants ?? [],
     setVariants: product.setVariants ?? [],
+    variants:
+      product.variants?.map((variant) => ({
+        clientId: variant.id,
+        id: variant.id,
+        sku: variant.sku,
+        name: variant.name,
+        colorHex: variant.colorHex ?? '#9ca3af',
+        variantType: variant.variantType as AdminVariantFormItem['variantType'],
+        price: variant.price != null ? String(variant.price) : '',
+        compareAtPrice:
+          variant.compareAtPrice != null ? String(variant.compareAtPrice) : '',
+        stockQuantity: String(variant.stockQuantity),
+        isDefault: variant.isDefault,
+        isActive: variant.isActive,
+        productImages: mapImages(variant.images ?? []),
+        galleryImages: mapImages(variant.galleryImages ?? []),
+      })) ?? [],
     productImages: mapImages(product.images ?? []),
     featuredImages: mapImages(product.featuredImages ?? []),
   };
@@ -238,6 +235,7 @@ export function AdminProductFormModal({
     categoryName: string,
     productName: string,
     patchImages: (updater: (prev: ImageUploadItem[]) => ImageUploadItem[]) => void,
+    variantName?: string,
   ): Promise<ImageUploadItem[]> => {
     const pendingIndexes = images
       .map((img, index) => ({ img, index }))
@@ -246,19 +244,24 @@ export function AdminProductFormModal({
     if (!pendingIndexes.length) return images;
 
     const phase = type === 'product' ? 'product' : 'gallery';
+    const label = variantName
+      ? type === 'product'
+        ? `Uploading ${variantName} images`
+        : `Uploading ${variantName} gallery`
+      : type === 'product'
+        ? 'Uploading Product Images'
+        : 'Uploading Gallery Images';
+
     setUploadProgress({
       phase,
       current: 0,
       total: pendingIndexes.length,
-      message:
-        type === 'product'
-          ? 'Uploading Product Images'
-          : 'Uploading Gallery Images',
+      message: label,
     });
 
     patchImages((prev) =>
       prev.map((img) =>
-        img.file && !img.url ? { ...img, uploading: true, uploadProgress: 0 } : img,
+        img.file && !img.url ? { ...img, uploading: true, uploadProgress: 0, error: undefined } : img,
       ),
     );
 
@@ -267,63 +270,102 @@ export function AdminProductFormModal({
       string,
       { url: string; publicId: string; folder: string }
     >();
+    const failedByClientId = new Map<string, string>();
 
     await mapWithConcurrency(
       pendingIndexes,
       UPLOAD_CONCURRENCY,
       async ({ img }) => {
         if (!img.file) return;
-        const { data } = await adminService.uploadProductImage(img.file, {
-          type,
-          categoryName,
-          productName,
-        });
-        uploadedByClientId.set(img.clientId, {
-          url: data.data.url,
-          publicId: data.data.publicId,
-          folder: data.data.folder,
-        });
+        try {
+          const { data } = await adminService.uploadProductImage(img.file, {
+            type,
+            categoryName,
+            productName,
+            ...(variantName ? { variantName } : {}),
+          });
+          uploadedByClientId.set(img.clientId, {
+            url: data.data.url,
+            publicId: data.data.publicId,
+            folder: data.data.folder,
+          });
+        } catch (err) {
+          failedByClientId.set(img.clientId, getApiErrorMessage(err));
+        }
       },
       (completed, total) => {
         setUploadProgress({
           phase,
           current: completed,
           total,
-          message:
-            type === 'product'
-              ? `Uploading Product Images · Image ${completed} of ${total}`
-              : `Uploading Gallery Images · Image ${completed} of ${total}`,
+          message: `${label} · ${completed} of ${total}`,
         });
       },
     );
 
     const next = images.map((img) => {
       const uploaded = uploadedByClientId.get(img.clientId);
-      if (!uploaded) return { ...img, uploading: false };
-      if (img.previewUrl?.startsWith('blob:')) {
-        URL.revokeObjectURL(img.previewUrl);
+      if (uploaded) {
+        if (img.previewUrl?.startsWith('blob:')) {
+          URL.revokeObjectURL(img.previewUrl);
+        }
+        return {
+          ...img,
+          url: uploaded.url,
+          cloudinaryPublicId: uploaded.publicId,
+          folder: uploaded.folder,
+          file: undefined,
+          previewUrl: undefined,
+          uploading: false,
+          uploadProgress: 100,
+          uploaded: true,
+          error: undefined,
+        };
       }
-      return {
-        ...img,
-        url: uploaded.url,
-        cloudinaryPublicId: uploaded.publicId,
-        folder: uploaded.folder,
-        file: undefined,
-        previewUrl: undefined,
-        uploading: false,
-        uploadProgress: 100,
-        uploaded: true,
-      };
+      const failMsg = failedByClientId.get(img.clientId);
+      if (failMsg) {
+        return {
+          ...img,
+          uploading: false,
+          uploadProgress: undefined,
+          error: failMsg,
+        };
+      }
+      return { ...img, uploading: false };
     });
 
     patchImages(() => next);
+
+    if (failedByClientId.size) {
+      const firstError = [...failedByClientId.values()][0];
+      throw new Error(firstError || 'Some images failed to upload. Please retry.');
+    }
+
     return next;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (form.productImages.length < 1) {
+    if (form.variants.length > 0) {
+      for (const variant of form.variants) {
+        if (!variant.name.trim()) {
+          setError('Each variant needs a name');
+          return;
+        }
+        if (!variant.sku.trim()) {
+          setError('Each variant needs a SKU');
+          return;
+        }
+        const hasReadyImage = variant.productImages.some(
+          (img) => Boolean(img.url) || Boolean(img.file),
+        );
+        if (!hasReadyImage) {
+          setError(`Add at least one product image for "${variant.name || 'variant'}"`);
+          return;
+        }
+      }
+    } else if (form.productImages.length < 1) {
       setError('Add at least one product image');
       return;
     }
@@ -351,10 +393,11 @@ export function AdminProductFormModal({
     setError('');
 
     try {
-      const beforeProductImages = form.productImages;
       let productImages = form.productImages;
       let featuredImages = form.featuredImages;
+      let variants = form.variants;
 
+      // Always upload product-level images that are still pending (even when variants exist)
       productImages = await uploadPendingImages(
         productImages,
         'product',
@@ -379,23 +422,85 @@ export function AdminProductFormModal({
           })),
       );
 
-      const missingProduct = productImages.some((img) => !img.url);
-      const missingGallery = featuredImages.some((img) => !img.url);
-      if (missingProduct || missingGallery) {
+      if (variants.length > 0) {
+        const uploadedVariants: AdminVariantFormItem[] = [];
+        for (let i = 0; i < variants.length; i++) {
+          const variant = variants[i];
+          const variantLabel = variant.name.trim() || `variant-${i + 1}`;
+
+          const variantProductImages = await uploadPendingImages(
+            variant.productImages,
+            'product',
+            categoryName,
+            form.name,
+            (updater) =>
+              onChange((prev) => ({
+                ...prev,
+                variants: prev.variants.map((v) =>
+                  v.clientId === variant.clientId
+                    ? { ...v, productImages: updater(v.productImages) }
+                    : v,
+                ),
+              })),
+            variantLabel,
+          );
+
+          const variantGalleryImages = await uploadPendingImages(
+            variant.galleryImages,
+            'gallery',
+            categoryName,
+            form.name,
+            (updater) =>
+              onChange((prev) => ({
+                ...prev,
+                variants: prev.variants.map((v) =>
+                  v.clientId === variant.clientId
+                    ? { ...v, galleryImages: updater(v.galleryImages) }
+                    : v,
+                ),
+              })),
+            variantLabel,
+          );
+
+          uploadedVariants.push({
+            ...variant,
+            productImages: variantProductImages,
+            galleryImages: variantGalleryImages,
+          });
+        }
+        variants = uploadedVariants;
+      }
+
+      const incomplete = (imgs: ImageUploadItem[]) =>
+        imgs.some((img) => Boolean(img.file) && !img.url);
+
+      if (
+        incomplete(productImages) ||
+        incomplete(featuredImages) ||
+        variants.some(
+          (v) => incomplete(v.productImages) || incomplete(v.galleryImages),
+        )
+      ) {
         throw new Error('Some images failed to upload. Please retry.');
       }
 
-      const colorVariants = resolveColorVariantsAfterUpload(
-        form.colorVariants,
-        beforeProductImages,
-        productImages,
-      );
+      if (variants.length > 0) {
+        for (const variant of variants) {
+          if (!variant.productImages.some((img) => Boolean(img.url))) {
+            throw new Error(
+              `Variant "${variant.name}" needs at least one uploaded product image.`,
+            );
+          }
+        }
+      } else if (!productImages.some((img) => Boolean(img.url))) {
+        throw new Error('Add at least one product image');
+      }
 
       onChange((prev) => ({
         ...prev,
         productImages,
         featuredImages,
-        colorVariants,
+        variants,
       }));
 
       setUploadProgress({
@@ -410,7 +515,7 @@ export function AdminProductFormModal({
           ...form,
           productImages,
           featuredImages,
-          colorVariants,
+          variants,
         }),
       );
 
@@ -433,6 +538,19 @@ export function AdminProductFormModal({
           ...img,
           uploading: false,
           uploadProgress: img.url ? 100 : undefined,
+        })),
+        variants: prev.variants.map((v) => ({
+          ...v,
+          productImages: v.productImages.map((img) => ({
+            ...img,
+            uploading: false,
+            uploadProgress: img.url ? 100 : undefined,
+          })),
+          galleryImages: v.galleryImages.map((img) => ({
+            ...img,
+            uploading: false,
+            uploadProgress: img.url ? 100 : undefined,
+          })),
         })),
       }));
       setError(getApiErrorMessage(err));
@@ -498,9 +616,13 @@ export function AdminProductFormModal({
         <div className="mt-4 space-y-3">
           <AdminImageUploadSection
             label="Product Images"
-            description="Catalog images used in shop listings and cards. Drag to reorder. First / Primary image is the default display."
+            description={
+              form.variants.length
+                ? 'Optional when using variants. Used only if no variant images exist.'
+                : 'Catalog images used in shop listings and cards. Drag to reorder. First / Primary image is the default display.'
+            }
             images={form.productImages}
-            min={1}
+            min={form.variants.length ? 0 : 1}
             max={10}
             enablePrimary
             disabled={saving}
@@ -582,15 +704,21 @@ export function AdminProductFormModal({
             placeholder="Stock quantity"
             value={form.stockQuantity}
             onChange={(e) => onChange({ ...form, stockQuantity: e.target.value })}
-            required
+            required={!form.variants.length}
+            disabled={form.variants.length > 0}
           />
+          {form.variants.length > 0 && (
+            <p className="-mt-1 text-xs text-muted-foreground">
+              Stock is managed per variant below (sum syncs to the product automatically).
+            </p>
+          )}
 
-          <AdminProductVariationsSection
-            colorVariants={form.colorVariants}
-            setVariants={form.setVariants}
-            productImages={form.productImages}
-            onColorChange={(colorVariants) => onChange((prev) => ({ ...prev, colorVariants }))}
-            onSetChange={(setVariants) => onChange((prev) => ({ ...prev, setVariants }))}
+          <AdminProductVariantsSection
+            variants={form.variants}
+            disabled={saving}
+            defaultPrice={form.price}
+            defaultCompareAtPrice={form.compareAtPrice}
+            onChange={(variants) => onChange((prev) => ({ ...prev, variants }))}
           />
 
           <select
@@ -668,39 +796,35 @@ export function buildProductPayload(form: ProductFormValues) {
         ...(withPrimary ? { isPrimary: Boolean(img.isPrimary) || sortOrder === 0 } : {}),
       }));
 
+  const variants = form.variants
+    .filter((v) => v.name.trim() && v.sku.trim())
+    .map((v, sortOrder) => ({
+      // Only send persisted DB ids — never client-generated keys
+      ...(v.id ? { id: v.id } : {}),
+      sku: v.sku.trim(),
+      name: v.name.trim(),
+      ...(v.colorHex ? { colorHex: v.colorHex } : {}),
+      variantType: v.variantType,
+      ...(v.price ? { price: Number(v.price) } : {}),
+      ...(v.compareAtPrice ? { compareAtPrice: Number(v.compareAtPrice) } : {}),
+      stockQuantity: Number(v.stockQuantity) || 0,
+      sortOrder,
+      isDefault: v.isDefault,
+      isActive: v.isActive,
+      productImages: toPayload(v.productImages, true),
+      galleryImages: toPayload(v.galleryImages, false),
+    }));
+
   return {
     name: form.name,
     sku: form.sku,
     price: Number(form.price),
-    stockQuantity: Number(form.stockQuantity),
+    stockQuantity: variants.length ? 0 : Number(form.stockQuantity),
     categoryId: form.categoryId,
     description: form.description || undefined,
     compareAtPrice: form.compareAtPrice ? Number(form.compareAtPrice) : undefined,
     sizes: [],
-    colorVariants: form.colorVariants
-      .filter((c) => c.name.trim())
-      .map((c) => ({
-        id: c.id,
-        name: c.name.trim(),
-        ...(c.hex ? { hex: c.hex } : {}),
-        ...(c.price != null && !Number.isNaN(c.price) ? { price: c.price } : {}),
-        ...(c.compareAtPrice != null && !Number.isNaN(c.compareAtPrice)
-          ? { compareAtPrice: c.compareAtPrice }
-          : {}),
-        imageUrl:
-          c.imageUrl && isPersistableImageUrl(c.imageUrl) ? c.imageUrl : undefined,
-      })),
-    setVariants: form.setVariants
-      .filter((s) => s.name.trim())
-      .map((s) => ({
-        id: s.id,
-        name: s.name.trim(),
-        ...(s.label?.trim() ? { label: s.label.trim() } : {}),
-        ...(s.price != null && !Number.isNaN(s.price) ? { price: s.price } : {}),
-        ...(s.compareAtPrice != null && !Number.isNaN(s.compareAtPrice)
-          ? { compareAtPrice: s.compareAtPrice }
-          : {}),
-      })),
+    ...(variants.length ? { variants } : {}),
     isActive: form.isActive,
     isFeatured: form.isFeatured,
     productImages: toPayload(form.productImages, true),

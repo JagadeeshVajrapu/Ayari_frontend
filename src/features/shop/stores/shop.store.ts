@@ -1,11 +1,13 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { ListingProduct } from '@/types/product.types';
+import { matchCartItem } from '@/features/shop/lib/cart-keys';
 
 const MAX_COMPARE = 4;
 
 interface CartItem {
   productId: string;
+  variantId?: string;
   quantity: number;
 }
 
@@ -26,10 +28,10 @@ interface ShopState {
   isInWishlist: (productId: string) => boolean;
   toggleCompare: (productId: string) => boolean;
   isInCompare: (productId: string) => boolean;
-  addToCart: (productId: string, quantity?: number) => void;
-  removeFromCart: (productId: string) => void;
-  updateCartQuantity: (productId: string, quantity: number) => void;
-  moveToWishlist: (productId: string) => void;
+  addToCart: (productId: string, quantity?: number, variantId?: string) => void;
+  removeFromCart: (productId: string, variantId?: string) => void;
+  updateCartQuantity: (productId: string, quantity: number, variantId?: string) => void;
+  moveToWishlist: (productId: string, variantId?: string) => void;
   setAppliedCoupon: (coupon: AppliedCoupon | null) => void;
   setShippingMethod: (method: ShippingMethod) => void;
   clearCart: () => void;
@@ -67,43 +69,47 @@ export const useShopStore = create<ShopState>()(
 
       isInCompare: (productId) => get().compare.includes(productId),
 
-      addToCart: (productId, quantity = 1) =>
+      addToCart: (productId, quantity = 1, variantId) =>
         set((state) => {
-          const existing = state.cart.find((item) => item.productId === productId);
+          const existing = state.cart.find((item) => matchCartItem(item, productId, variantId));
           if (existing) {
             return {
               cart: state.cart.map((item) =>
-                item.productId === productId
+                matchCartItem(item, productId, variantId)
                   ? { ...item, quantity: item.quantity + quantity }
                   : item,
               ),
             };
           }
-          return { cart: [...state.cart, { productId, quantity }] };
+          return {
+            cart: [...state.cart, { productId, ...(variantId ? { variantId } : {}), quantity }],
+          };
         }),
 
-      removeFromCart: (productId) =>
+      removeFromCart: (productId, variantId) =>
         set((state) => ({
-          cart: state.cart.filter((item) => item.productId !== productId),
+          cart: state.cart.filter((item) => !matchCartItem(item, productId, variantId)),
         })),
 
-      updateCartQuantity: (productId, quantity) =>
+      updateCartQuantity: (productId, quantity, variantId) =>
         set((state) => {
           if (quantity < 1) {
-            return { cart: state.cart.filter((item) => item.productId !== productId) };
+            return {
+              cart: state.cart.filter((item) => !matchCartItem(item, productId, variantId)),
+            };
           }
           return {
             cart: state.cart.map((item) =>
-              item.productId === productId ? { ...item, quantity } : item,
+              matchCartItem(item, productId, variantId) ? { ...item, quantity } : item,
             ),
           };
         }),
 
-      moveToWishlist: (productId) => {
+      moveToWishlist: (productId, variantId) => {
         const { wishlist, cart } = get();
         set({
           wishlist: wishlist.includes(productId) ? wishlist : [...wishlist, productId],
-          cart: cart.filter((item) => item.productId !== productId),
+          cart: cart.filter((item) => !matchCartItem(item, productId, variantId)),
         });
       },
 

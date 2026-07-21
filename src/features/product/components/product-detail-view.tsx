@@ -65,7 +65,9 @@ export function ProductDetailView({
           >
             <ProductGallery
               images={variation.galleryImages}
-              featuredImages={product.featuredImages}
+              featuredImages={
+                product.variants?.length ? [] : product.featuredImages
+              }
               name={variation.displayTitle}
             />
           </motion.div>

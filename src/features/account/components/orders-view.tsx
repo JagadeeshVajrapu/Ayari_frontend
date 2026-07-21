@@ -71,10 +71,23 @@ export function OrdersView() {
             </div>
 
             <div className="mt-4 space-y-2">
-              {order.items.map((item) => (
-                <div key={item.productName} className="flex items-center justify-between rounded-2xl bg-muted/40 px-4 py-3 text-sm">
-                  <span className="font-medium">{item.productName}</span>
-                  <span className="text-ink-muted">Qty {item.quantity} · {formatPrice(item.totalPrice)}</span>
+              {order.items.map((item, itemIndex) => (
+                <div
+                  key={`${order.id}-${itemIndex}`}
+                  className="flex items-center justify-between rounded-2xl bg-muted/40 px-4 py-3 text-sm"
+                >
+                  <div>
+                    <span className="font-medium">{item.productName}</span>
+                    {item.variantName ? (
+                      <span className="text-ink-muted"> · {item.variantName}</span>
+                    ) : null}
+                    {item.productSku ? (
+                      <p className="mt-0.5 text-xs text-ink-faint">SKU: {item.productSku}</p>
+                    ) : null}
+                  </div>
+                  <span className="text-ink-muted">
+                    Qty {item.quantity} · {formatPrice(item.totalPrice)}
+                  </span>
                 </div>
               ))}
             </div>

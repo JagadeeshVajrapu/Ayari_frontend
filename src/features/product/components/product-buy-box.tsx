@@ -26,27 +26,33 @@ export function ProductBuyBox({ product, variation, compact = false, onBuyNow }:
   const [addedToCart, setAddedToCart] = useState(false);
   const { addToCart, toggleWishlist, isInWishlist } = useShopStore();
   const wished = isInWishlist(product.slug);
-  const maxQty = Math.max(1, product.stockCount || 1);
 
   const {
     displayTitle,
     activePrice,
     activeMrp,
     discountPercent,
+    activeSku,
+    activeStock,
+    inStock,
     selectedColorId,
     selectedSetId,
+    selectedVariantId,
     setSelectedColor,
     setSelectedSet,
   } = variation;
 
+  const maxQty = Math.max(1, activeStock || 1);
+
   const handleAddToCart = () => {
-    if (!product.inStock) return;
-    addToCart(product.slug, quantity);
+    if (!inStock) return;
+    addToCart(product.slug, quantity, selectedVariantId ?? undefined);
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 2000);
   };
 
   const hasVariations =
+    (product.variants?.length ?? 0) > 0 ||
     (product.colorVariants?.length ?? 0) > 0 ||
     (product.setVariants?.length ?? 0) > 0;
 
@@ -83,13 +89,11 @@ export function ProductBuyBox({ product, variation, compact = false, onBuyNow }:
             <span
               className={cn(
                 'inline-flex h-2 w-2 rounded-full',
-                product.inStock ? 'bg-green-500' : 'bg-red-400',
+                inStock ? 'bg-green-500' : 'bg-red-400',
               )}
             />
             <span className="text-sm text-ink-muted">
-              {product.inStock
-                ? `In stock — ${product.stockCount} available`
-                : 'Out of stock'}
+              {inStock ? `In stock — ${activeStock} available` : 'Out of stock'}
             </span>
           </div>
         </motion.div>
@@ -158,7 +162,7 @@ export function ProductBuyBox({ product, variation, compact = false, onBuyNow }:
           variant="default"
           size="lg"
           className="flex-1"
-          disabled={!product.inStock}
+          disabled={!inStock}
           onClick={handleAddToCart}
         >
           <ShoppingBag className="h-4 w-4" />
@@ -168,7 +172,7 @@ export function ProductBuyBox({ product, variation, compact = false, onBuyNow }:
           variant="champagne"
           size="lg"
           className="flex-1"
-          disabled={!product.inStock}
+          disabled={!inStock}
           onClick={onBuyNow ?? handleAddToCart}
         >
           <Zap className="h-4 w-4" />
@@ -189,7 +193,7 @@ export function ProductBuyBox({ product, variation, compact = false, onBuyNow }:
       {!compact && (
         <div className="flex items-center gap-4 border-t border-border/60 pt-4">
           <ShareProduct product={product} />
-          <span className="text-xs text-ink-faint">SKU: {product.sku}</span>
+          <span className="text-xs text-ink-faint">SKU: {activeSku}</span>
         </div>
       )}
     </div>

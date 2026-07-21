@@ -1,13 +1,25 @@
 import type { ListingProduct } from '@/types/product.types';
 import type { ShippingMethod } from '@/features/shop/stores/shop.store';
+import { resolveMediaUrl } from '@/lib/media';
+import { PRODUCT_PLACEHOLDER } from '@/lib/catalog-constants';
+import { resolveProductVariant } from '@/lib/product-variations';
 
 export const FREE_SHIPPING_THRESHOLD = 5000;
 export const TAX_RATE = 0.18;
 
 export interface CartLineItem {
   product: ListingProduct;
+  variantId?: string;
+  variantName?: string;
+  displayName: string;
+  image: string;
+  sku: string;
+  unitPrice: number;
+  originalPrice?: number;
   quantity: number;
   lineTotal: number;
+  stockCount: number;
+  inStock: boolean;
 }
 
 export interface CartTotals {
@@ -33,8 +45,8 @@ export function calculateCartTotals(
   const subtotal = lineItems.reduce((sum, item) => sum + item.lineTotal, 0);
   const itemCount = lineItems.reduce((sum, item) => sum + item.quantity, 0);
   const savings = lineItems.reduce((sum, item) => {
-    if (item.product.originalPrice) {
-      return sum + (item.product.originalPrice - item.product.price) * item.quantity;
+    if (item.originalPrice) {
+      return sum + (item.originalPrice - item.unitPrice) * item.quantity;
     }
     return sum;
   }, 0);
@@ -62,4 +74,36 @@ export function getEstimatedDelivery(method: ShippingMethod): { from: Date; to: 
   const label = `${formatter.format(from)} – ${formatter.format(to)}`;
 
   return { from, to, label };
+}
+
+export function buildCartLineItem(
+  product: ListingProduct,
+  quantity: number,
+  variantId?: string,
+): CartLineItem | null {
+  const variant = resolveProductVariant(product, variantId);
+  const unitPrice = variant?.price ?? product.price;
+  const originalPrice = variant?.compareAtPrice ?? product.originalPrice;
+  const stockCount = variant?.stockQuantity ?? product.stockCount;
+  const image = variant?.image
+    ? resolveMediaUrl(variant.image, PRODUCT_PLACEHOLDER)
+    : product.image;
+  const sku = variant?.sku ?? product.sku ?? '';
+  const variantName = variant?.name;
+  const displayName = variantName ? `${product.name} (${variantName})` : product.name;
+
+  return {
+    product,
+    variantId: variant?.id ?? variantId,
+    variantName,
+    displayName,
+    image,
+    sku,
+    unitPrice,
+    originalPrice,
+    quantity,
+    lineTotal: unitPrice * quantity,
+    stockCount,
+    inStock: stockCount > 0,
+  };
 }

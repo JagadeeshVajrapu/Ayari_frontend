@@ -14,7 +14,8 @@ interface CartItemRowProps {
 }
 
 export function CartItemRow({ item, index }: CartItemRowProps) {
-  const { product, quantity, lineTotal } = item;
+  const { product, quantity, lineTotal, displayName, image, unitPrice, variantId, stockCount } =
+    item;
   const { updateCartQuantity, removeFromCart, moveToWishlist } = useShopStore();
 
   return (
@@ -30,7 +31,7 @@ export function CartItemRow({ item, index }: CartItemRowProps) {
         href={`/products/${product.slug}`}
         className="relative h-28 w-24 shrink-0 overflow-hidden rounded-2xl sm:h-32 sm:w-28"
       >
-        <Image src={product.image} alt={product.name} fill className="object-cover" sizes="112px" />
+        <Image src={image} alt={displayName} fill className="object-cover" sizes="112px" />
       </Link>
 
       <div className="flex min-w-0 flex-1 flex-col justify-between">
@@ -39,14 +40,14 @@ export function CartItemRow({ item, index }: CartItemRowProps) {
             <p className="text-[10px] tracking-[0.15em] text-ink-faint uppercase">{product.brand}</p>
             <Link href={`/products/${product.slug}`}>
               <h3 className="font-display text-base text-foreground transition-colors hover:text-champagne-dark sm:text-lg">
-                {product.name}
+                {displayName}
               </h3>
             </Link>
-            <p className="mt-1 text-sm text-ink-muted">{formatPrice(product.price)} each</p>
+            <p className="mt-1 text-sm text-ink-muted">{formatPrice(unitPrice)} each</p>
           </div>
           <button
             type="button"
-            onClick={() => removeFromCart(product.id)}
+            onClick={() => removeFromCart(product.slug, variantId)}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink-faint transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/30"
             aria-label="Remove item"
           >
@@ -59,7 +60,7 @@ export function CartItemRow({ item, index }: CartItemRowProps) {
             <div className="flex items-center rounded-xl border border-border">
               <button
                 type="button"
-                onClick={() => updateCartQuantity(product.id, quantity - 1)}
+                onClick={() => updateCartQuantity(product.slug, quantity - 1, variantId)}
                 className="flex h-9 w-9 items-center justify-center text-ink-muted hover:text-foreground"
                 aria-label="Decrease quantity"
               >
@@ -68,11 +69,13 @@ export function CartItemRow({ item, index }: CartItemRowProps) {
               <span className="w-8 text-center text-sm font-medium">{quantity}</span>
               <button
                 type="button"
-                onClick={() => updateCartQuantity(product.id, Math.min(product.stockCount, quantity + 1))}
-                disabled={quantity >= product.stockCount}
+                onClick={() =>
+                  updateCartQuantity(product.slug, Math.min(stockCount, quantity + 1), variantId)
+                }
+                disabled={quantity >= stockCount}
                 className={cn(
                   'flex h-9 w-9 items-center justify-center',
-                  quantity >= product.stockCount ? 'text-ink-faint' : 'text-ink-muted hover:text-foreground',
+                  quantity >= stockCount ? 'text-ink-faint' : 'text-ink-muted hover:text-foreground',
                 )}
                 aria-label="Increase quantity"
               >
@@ -82,7 +85,7 @@ export function CartItemRow({ item, index }: CartItemRowProps) {
 
             <button
               type="button"
-              onClick={() => moveToWishlist(product.id)}
+              onClick={() => moveToWishlist(product.slug, variantId)}
               className="flex items-center gap-1.5 text-xs text-ink-muted transition-colors hover:text-champagne-dark"
             >
               <Heart className="h-3.5 w-3.5" />

@@ -1,4 +1,4 @@
-import type { ColorVariant, SetVariant } from '@/lib/product-variations';
+import type { ColorVariant, ProductVariant, SetVariant } from '@/lib/product-variations';
 
 export interface ProductSpecification {
   label: string;
@@ -42,6 +42,7 @@ export interface ListingProduct {
   sizes?: string[];
   colorVariants?: ColorVariant[];
   setVariants?: SetVariant[];
+  variants?: ProductVariant[];
   sku?: string;
 }
 
