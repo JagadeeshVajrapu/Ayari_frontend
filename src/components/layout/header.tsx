@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, Search, ShoppingBag, User, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { BrandLogo } from '@/components/brand/brand-logo';
 import { useShopStore } from '@/features/shop/stores/shop.store';
 import { useAuthStore } from '@/features/auth/stores/auth.store';
@@ -45,8 +46,11 @@ function NavLink({ href, label, index }: { href: string; label: string; index: n
 }
 
 export function Header() {
+  const router = useRouter();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const isReady = useClientReady();
   const cartCount = useShopStore((s) => s.cartCount());
   const user = useAuthStore((s) => s.user);
@@ -67,6 +71,14 @@ export function Header() {
       document.body.style.overflow = '';
     };
   }, [isMobileOpen]);
+
+  const submitSearch = (event: FormEvent) => {
+    event.preventDefault();
+    const query = searchQuery.trim();
+    router.push(query ? `/shop?q=${encodeURIComponent(query)}` : '/shop');
+    setSearchOpen(false);
+    setIsMobileOpen(false);
+  };
 
   return (
     <>
@@ -102,7 +114,13 @@ export function Header() {
               <ThemeToggle />
               <NotificationBell />
               <motion.div whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }}>
-                <Button variant="ghost" size="icon" aria-label="Search" className="hidden sm:flex">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Search products"
+                  className="hidden sm:flex"
+                  onClick={() => setSearchOpen((open) => !open)}
+                >
                   <Search className="h-5 w-5" />
                 </Button>
               </motion.div>
@@ -150,6 +168,31 @@ export function Header() {
       </motion.header>
 
       <AnimatePresence>
+        {searchOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className="sticky top-[72px] z-40 border-b border-border/60 bg-cream/95 px-4 py-3 backdrop-blur-xl dark:bg-background/95"
+          >
+            <form onSubmit={submitSearch} className="container-premium flex gap-2">
+              <Input
+                autoFocus
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search products, categories, or SKU..."
+                className="flex-1"
+              />
+              <Button type="submit">Search</Button>
+              <Button type="button" variant="ghost" onClick={() => setSearchOpen(false)}>
+                Close
+              </Button>
+            </form>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {isMobileOpen && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -174,6 +217,17 @@ export function Header() {
               </div>
 
               <nav className="mt-12 flex flex-col gap-6">
+                <form onSubmit={submitSearch} className="flex gap-2">
+                  <Input
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder="Search products..."
+                    className="flex-1"
+                  />
+                  <Button type="submit" size="icon" aria-label="Search">
+                    <Search className="h-4 w-4" />
+                  </Button>
+                </form>
                 {navLinks.map((link, i) => (
                   <motion.div
                     key={link.href}

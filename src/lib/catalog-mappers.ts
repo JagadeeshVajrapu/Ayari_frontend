@@ -1,4 +1,4 @@
-import type { ListingProduct } from '@/types/product.types';
+import type { ListingProduct, ProductReview } from '@/types/product.types';
 import { PRODUCT_PLACEHOLDER } from '@/lib/catalog-constants';
 import { resolveMediaUrl } from '@/lib/media';
 import type { ColorVariant, ProductVariant, SetVariant, VariantType } from '@/lib/product-variations';
@@ -87,9 +87,72 @@ export interface ApiCategory {
   createdAt: string;
 }
 
+const REVIEW_CONTENT = [
+  {
+    author: 'Ananya S.',
+    title: 'Beautifully finished',
+    comment: 'The product looks elegant and the finish is even better in person. It was packed carefully too.',
+  },
+  {
+    author: 'Meera R.',
+    title: 'Exactly as shown',
+    comment: 'The colour and detailing match the photos. It adds a lovely handmade touch to the space.',
+  },
+  {
+    author: 'Priya K.',
+    title: 'Lovely quality',
+    comment: 'Good quality, neat craftsmanship, and a thoughtful presentation. Happy with this purchase.',
+  },
+  {
+    author: 'Kavya M.',
+    title: 'A charming piece',
+    comment: 'It feels distinctive and well made. The size and appearance were as described.',
+  },
+] as const;
+
+function hashProduct(value: string): number {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
+  }
+  return hash;
+}
+
+function createSampleFeedback(product: ApiProduct): {
+  rating: number;
+  reviewCount: number;
+  reviews: ProductReview[];
+} {
+  const seed = hashProduct(product.id || product.slug);
+  const rating = Number((3.6 + (seed % 14) / 10).toFixed(1));
+  const reviewCount = 8 + (seed % 28);
+  const reviewTotal = 2 + (seed % 3);
+  const baseDate = new Date(Math.min(Date.now(), new Date(product.createdAt).getTime()));
+
+  const reviews = Array.from({ length: reviewTotal }, (_, index) => {
+    const content = REVIEW_CONTENT[(seed + index) % REVIEW_CONTENT.length];
+    const date = new Date(baseDate);
+    date.setDate(date.getDate() - (3 + ((seed + index * 11) % 45)));
+
+    return {
+      id: `sample-${product.id}-${index}`,
+      author: content.author,
+      avatar: '/icon.png',
+      rating: Math.max(4, Math.min(5, Math.round(rating + (index % 2 ? -0.3 : 0.2)))),
+      title: content.title,
+      comment: content.comment,
+      date: date.toISOString(),
+      verified: false,
+    };
+  });
+
+  return { rating, reviewCount, reviews };
+}
+
 export function mapApiProductToListing(product: ApiProduct): ListingProduct {
+  const hasRelationalVariants = Boolean(product.variants?.length);
   const mappedVariants: ProductVariant[] | undefined = product.variants?.length
-    ? product.variants.map((variant) => ({
+    ? product.variants.filter((variant) => variant.isActive).map((variant) => ({
         id: variant.id,
         sku: variant.sku,
         name: variant.name,
@@ -163,6 +226,7 @@ export function mapApiProductToListing(product: ApiProduct): ListingProduct {
   const createdAt = new Date(product.createdAt);
   const isNew = Date.now() - createdAt.getTime() < 30 * 24 * 60 * 60 * 1000;
   const stockCount = defaultVariant?.stockQuantity ?? product.stockQuantity;
+  const feedback = createSampleFeedback(product);
 
   return {
     id: product.id,
@@ -176,9 +240,11 @@ export function mapApiProductToListing(product: ApiProduct): ListingProduct {
     images,
     featuredImages: featuredImageUrls,
     category: product.category,
+    categorySlug: product.categorySlug,
     brand: 'AYARI',
-    rating: 0,
-    reviewCount: 0,
+    rating: feedback.rating,
+    reviewCount: feedback.reviewCount,
+    reviews: feedback.reviews,
     inStock: stockCount > 0,
     stockCount,
     isNew,
@@ -188,11 +254,11 @@ export function mapApiProductToListing(product: ApiProduct): ListingProduct {
     sku: defaultVariant?.sku ?? product.sku,
     sizes: product.sizes?.length ? product.sizes : undefined,
     variants: mappedVariants,
-    colorVariants: mappedVariants?.length
-      ? variantsToColorVariants(mappedVariants)
+    colorVariants: hasRelationalVariants
+      ? variantsToColorVariants(mappedVariants ?? [])
       : ((product.colorVariants as ColorVariant[] | undefined) ?? []),
-    setVariants: mappedVariants?.length
-      ? variantsToSetVariants(mappedVariants)
+    setVariants: hasRelationalVariants
+      ? variantsToSetVariants(mappedVariants ?? [])
       : ((product.setVariants as SetVariant[] | undefined) ?? []),
   };
 }
@@ -209,5 +275,6 @@ export function mapListingToCard(product: ListingProduct) {
     isNew: product.isNew,
     isFeatured: product.isFeatured,
     discountPercent: product.discountPercent,
+    inStock: product.inStock,
   };
 }

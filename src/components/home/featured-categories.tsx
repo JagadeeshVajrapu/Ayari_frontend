@@ -25,12 +25,20 @@ export async function FeaturedCategories() {
             description="Browse collections you create in the admin panel."
           />
           <ScrollReveal delay={0.2}>
-            <Button variant="outline" asChild>
-              <Link href="/shop">
-                All Products
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
+            <div className="flex flex-wrap gap-3">
+              <Button variant="outline" asChild>
+                <Link href="/categories">
+                  All Categories
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+              <Button variant="champagne" asChild>
+                <Link href="/shop">
+                  All Products
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
           </ScrollReveal>
         </div>
 
@@ -43,7 +51,7 @@ export async function FeaturedCategories() {
                 title={category.name}
                 subtitle={`${category.productCount} ${category.productCount === 1 ? 'product' : 'products'}`}
                 image={image}
-                href={`/shop?categories=${encodeURIComponent(category.name)}`}
+                href={`/shop?categories=${encodeURIComponent(category.slug)}`}
                 index={index}
               />
             );

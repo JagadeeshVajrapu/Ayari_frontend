@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Minus, Plus, Heart, ShoppingBag, Zap } from 'lucide-react';
 import { StarRating } from '@/features/shop/components/star-rating';
@@ -22,6 +23,7 @@ interface ProductBuyBoxProps {
 }
 
 export function ProductBuyBox({ product, variation, compact = false, onBuyNow }: ProductBuyBoxProps) {
+  const router = useRouter();
   const [quantity, setQuantity] = useState(1);
   const [addedToCart, setAddedToCart] = useState(false);
   const { addToCart, toggleWishlist, isInWishlist } = useShopStore();
@@ -51,6 +53,12 @@ export function ProductBuyBox({ product, variation, compact = false, onBuyNow }:
     setTimeout(() => setAddedToCart(false), 2000);
   };
 
+  const handleBuyNow = () => {
+    if (!inStock) return;
+    addToCart(product.slug, quantity, selectedVariantId ?? undefined);
+    router.push('/checkout');
+  };
+
   const hasVariations =
     (product.variants?.length ?? 0) > 0 ||
     (product.colorVariants?.length ?? 0) > 0 ||
@@ -70,7 +78,9 @@ export function ProductBuyBox({ product, variation, compact = false, onBuyNow }:
             )}
           </div>
 
-          <h1 className="mt-2 font-display text-display-md text-foreground">{displayTitle}</h1>
+          <h1 className="mt-2 max-w-2xl font-display text-3xl leading-tight text-foreground sm:text-4xl lg:text-[2.65rem]">
+            {displayTitle}
+          </h1>
 
           <div className="mt-3 flex items-center gap-3">
             <StarRating rating={product.rating} size="md" showValue reviewCount={product.reviewCount} />
@@ -173,7 +183,7 @@ export function ProductBuyBox({ product, variation, compact = false, onBuyNow }:
           size="lg"
           className="flex-1"
           disabled={!inStock}
-          onClick={onBuyNow ?? handleAddToCart}
+          onClick={onBuyNow ?? handleBuyNow}
         >
           <Zap className="h-4 w-4" />
           Buy Now
@@ -184,6 +194,8 @@ export function ProductBuyBox({ product, variation, compact = false, onBuyNow }:
             size="icon"
             className="h-14 w-14 shrink-0"
             onClick={() => toggleWishlist(product.slug)}
+            aria-label={wished ? 'Remove from wishlist' : 'Add to wishlist'}
+            title={wished ? 'Remove from wishlist' : 'Add to wishlist'}
           >
             <Heart className={cn('h-5 w-5', wished && 'fill-champagne text-champagne')} />
           </Button>

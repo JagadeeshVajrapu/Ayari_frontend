@@ -29,9 +29,11 @@ export interface ListingProduct {
   /** Extra gallery images shown under the main PDP gallery */
   featuredImages?: string[];
   category: string;
+  categorySlug?: string;
   brand: string;
   rating: number;
   reviewCount: number;
+  reviews?: ProductReview[];
   inStock: boolean;
   stockCount: number;
   isNew?: boolean;
@@ -76,7 +78,7 @@ export const DEFAULT_FILTERS: ProductFilters = {
   categories: [],
   brands: [],
   priceMin: 0,
-  priceMax: 100000,
+  priceMax: 500000,
   minRating: 0,
   inStockOnly: false,
   featuredOnly: false,

@@ -113,7 +113,7 @@ export function ProductGallery({ images, featuredImages = [], name }: ProductGal
       <div
         ref={containerRef}
         className={cn(
-          'relative aspect-[3/4] overflow-hidden rounded-4xl bg-cream-dark shadow-medium dark:bg-surface',
+          'relative aspect-square max-h-[620px] overflow-hidden rounded-4xl bg-cream-dark shadow-medium sm:aspect-[4/5] dark:bg-surface',
           'max-md:touch-pan-y',
         )}
         onMouseMove={handleMouseMove}
@@ -142,7 +142,7 @@ export function ProductGallery({ images, featuredImages = [], name }: ProductGal
               quality={85}
               sizes="(max-width: 1024px) 100vw, 50vw"
               className={cn(
-                'object-cover transition-transform duration-300 ease-out',
+                'object-contain transition-transform duration-300 ease-out',
                 isZoomed && 'scale-[2] max-md:scale-100',
               )}
               style={

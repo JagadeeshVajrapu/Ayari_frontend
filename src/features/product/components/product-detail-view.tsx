@@ -48,7 +48,7 @@ export function ProductDetailView({
           </Link>
           <ChevronRight className="h-3 w-3" />
           <Link
-            href={`/shop?categories=${encodeURIComponent(product.category)}`}
+            href={`/shop?categories=${encodeURIComponent(product.categorySlug ?? product.category)}`}
             className="transition-colors hover:text-foreground"
           >
             {product.category}
@@ -57,11 +57,12 @@ export function ProductDetailView({
           <span className="text-foreground">{product.name}</span>
         </motion.nav>
 
-        <div className="grid gap-10 lg:grid-cols-2 lg:gap-16">
+        <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,520px)_minmax(0,1fr)] lg:gap-12 xl:grid-cols-[minmax(0,560px)_minmax(0,1fr)]">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            className="w-full max-w-xl justify-self-center lg:justify-self-start"
           >
             <ProductGallery
               images={variation.galleryImages}

@@ -12,6 +12,7 @@ interface ProductToolbarProps {
   filters: ProductFilters;
   totalCount: number;
   activeFilterCount: number;
+  categoryLabel?: string | null;
   onSearch: (search: string) => void;
   onSort: (sort: ProductFilters['sort']) => void;
   onViewChange: (view: ProductFilters['view']) => void;
@@ -22,11 +23,14 @@ export function ProductToolbar({
   filters,
   totalCount,
   activeFilterCount,
+  categoryLabel,
   onSearch,
   onSort,
   onViewChange,
   onOpenFilters,
 }: ProductToolbarProps) {
+  const heading = categoryLabel ?? 'All Products';
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -36,7 +40,7 @@ export function ProductToolbar({
             animate={{ opacity: 1, y: 0 }}
             className="font-display text-display-md text-foreground"
           >
-            All Products
+            {heading}
           </motion.h1>
           <motion.p
             initial={{ opacity: 0 }}
@@ -52,7 +56,7 @@ export function ProductToolbar({
           <Search className="absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-ink-faint" />
           <Input
             type="search"
-            placeholder="Search products or brands..."
+            placeholder="Search by product, category, or SKU..."
             defaultValue={filters.search}
             key={filters.search}
             onChange={(e) => onSearch(e.target.value)}

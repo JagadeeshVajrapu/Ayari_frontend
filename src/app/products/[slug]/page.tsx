@@ -52,7 +52,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
         product={product}
         relatedProducts={relatedProducts}
         bundleProducts={[]}
-        reviews={[]}
+        reviews={product.reviews ?? []}
       />
     </>
   );
