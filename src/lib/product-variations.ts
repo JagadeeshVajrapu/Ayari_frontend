@@ -20,6 +20,136 @@ export interface SetVariant {
   compareAtPrice?: number;
 }
 
+export type VariantType =
+  | 'COLOR'
+  | 'SIZE'
+  | 'SET'
+  | 'STORAGE'
+  | 'RAM'
+  | 'WEIGHT'
+  | 'MATERIAL'
+  | 'BUNDLE'
+  | 'EDITION'
+  | 'OTHER';
+
+export interface ProductVariantImage {
+  id: string;
+  url: string;
+  altText?: string | null;
+  sortOrder?: number;
+  cloudinaryPublicId?: string | null;
+  folder?: string | null;
+  isPrimary?: boolean;
+}
+
+export interface ProductVariant {
+  id: string;
+  sku: string;
+  name: string;
+  colorHex?: string | null;
+  variantType: VariantType;
+  price?: number | null;
+  compareAtPrice?: number | null;
+  stockQuantity: number;
+  sortOrder?: number;
+  isDefault: boolean;
+  isActive: boolean;
+  image?: string | null;
+  images: ProductVariantImage[];
+  galleryImages: ProductVariantImage[];
+}
+
+export interface AdminVariantFormItem {
+  /** React list key — always present */
+  clientId: string;
+  /** Persisted DB id — only set when editing an existing variant */
+  id?: string;
+  sku: string;
+  name: string;
+  colorHex?: string;
+  variantType: VariantType;
+  price: string;
+  compareAtPrice: string;
+  stockQuantity: string;
+  isDefault: boolean;
+  isActive: boolean;
+  productImages: import('@/features/admin/components/admin-image-upload-section').ImageUploadItem[];
+  galleryImages: import('@/features/admin/components/admin-image-upload-section').ImageUploadItem[];
+}
+
+export function createEmptyAdminVariant(
+  isDefault = false,
+  defaults?: { price?: string; compareAtPrice?: string },
+): AdminVariantFormItem {
+  return {
+    clientId: createVariantId('variant'),
+    sku: '',
+    name: '',
+    colorHex: '#9ca3af',
+    variantType: 'COLOR',
+    price: defaults?.price ?? '',
+    compareAtPrice: defaults?.compareAtPrice ?? '',
+    stockQuantity: '0',
+    isDefault,
+    isActive: true,
+    productImages: [],
+    galleryImages: [],
+  };
+}
+
+/** Default variant id for listing "Add to cart" (Amazon-style: buy default option). */
+export function getDefaultVariantId(product: { variants?: ProductVariant[] }): string | undefined {
+  const variants = (product.variants ?? []).filter((v) => v.isActive);
+  if (!variants.length) return undefined;
+  return (variants.find((v) => v.isDefault) ?? variants[0])?.id;
+}
+
+export function resolveProductVariant(
+  product: { variants?: ProductVariant[] },
+  variantId?: string | null,
+): ProductVariant | null {
+  const variants = (product.variants ?? []).filter((v) => v.isActive);
+  if (!variants.length) return null;
+  if (variantId) {
+    return variants.find((v) => v.id === variantId) ?? null;
+  }
+  return variants.find((v) => v.isDefault) ?? variants[0] ?? null;
+}
+
+export function variantsToColorVariants(variants: ProductVariant[]): ColorVariant[] {
+  return variants
+    .filter((v) => v.variantType === 'COLOR' && v.isActive)
+    .map((v) => ({
+      id: v.id,
+      name: v.name,
+      hex: v.colorHex ?? undefined,
+      imageUrl: v.image ?? undefined,
+      price: v.price ?? undefined,
+      compareAtPrice: v.compareAtPrice ?? undefined,
+    }));
+}
+
+export function variantsToSetVariants(variants: ProductVariant[]): SetVariant[] {
+  return variants
+    .filter((v) => v.variantType === 'SET' && v.isActive)
+    .map((v) => ({
+      id: v.id,
+      name: v.name,
+      label: v.name,
+      price: v.price ?? undefined,
+      compareAtPrice: v.compareAtPrice ?? undefined,
+    }));
+}
+
+export function resolveVariantGalleryImages(variant: ProductVariant | null): string[] {
+  if (!variant) return [];
+  const productUrls = variant.images.map((img) => resolveMediaUrl(img.url, PRODUCT_PLACEHOLDER));
+  const galleryUrls = variant.galleryImages.map((img) =>
+    resolveMediaUrl(img.url, PRODUCT_PLACEHOLDER),
+  );
+  return [...productUrls, ...galleryUrls].filter(Boolean);
+}
+
 export function createVariantId(prefix: string): string {
   return typeof crypto !== 'undefined' && crypto.randomUUID
     ? crypto.randomUUID()

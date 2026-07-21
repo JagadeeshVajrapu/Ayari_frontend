@@ -26,6 +26,8 @@ export function AdminProductsView() {
   const [categories, setCategories] = useState<AdminCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [page, setPage] = useState(1);
@@ -93,12 +95,27 @@ export function AdminProductsView() {
   };
 
   const handleDelete = async (id: string, name: string) => {
-    if (!window.confirm(`Delete "${name}"? This cannot be undone.`)) return;
+    if (
+      !window.confirm(
+        `Permanently delete "${name}"?\n\nThe product, variants, and catalog images will be removed. Existing orders keep their saved product name, SKU, variant, image, and price.`,
+      )
+    ) return;
+
+    setDeletingId(id);
+    setError('');
+    setNotice('');
     try {
-      await adminService.deleteProduct(id);
-      await loadProducts();
+      const { data } = await adminService.deleteProduct(id);
+      setNotice(data.message);
+      if (products.length === 1 && page > 1) {
+        setPage((current) => current - 1);
+      } else {
+        await loadProducts();
+      }
     } catch (err) {
       setError(getApiErrorMessage(err));
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -126,6 +143,11 @@ export function AdminProductsView() {
         {error && (
           <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">
             {error}
+          </div>
+        )}
+        {notice && (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-400">
+            {notice}
           </div>
         )}
 
@@ -222,10 +244,16 @@ export function AdminProductsView() {
                     <button
                       type="button"
                       onClick={() => handleDelete(p.id, p.name)}
+                      disabled={deletingId === p.id}
                       className="rounded-lg p-2 text-muted-foreground hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
                       aria-label={`Delete ${p.name}`}
+                      title="Remove product"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      {deletingId === p.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
                     </button>
                   </div>
                 ),

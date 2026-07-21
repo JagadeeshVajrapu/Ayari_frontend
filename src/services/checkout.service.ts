@@ -4,6 +4,7 @@ import type { ShippingMethod } from '@/features/shop/stores/shop.store';
 
 export interface CheckoutLineItem {
   productId: string;
+  variantId?: string;
   quantity: number;
 }
 

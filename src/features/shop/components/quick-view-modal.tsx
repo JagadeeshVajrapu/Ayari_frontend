@@ -9,6 +9,7 @@ import { StarRating } from './star-rating';
 import { ProductPrice } from '@/components/common/product-price';
 import { useShopStore } from '@/features/shop/stores/shop.store';
 import type { ListingProduct } from '@/types/product.types';
+import { getDefaultVariantId } from '@/lib/product-variations';
 import { Button } from '@/components/ui/button';
 
 interface QuickViewModalProps {
@@ -92,7 +93,9 @@ export function QuickViewModal({ product, onClose }: QuickViewModalProps) {
                         size="lg"
                         className="flex-1"
                         disabled={!product.inStock}
-                        onClick={() => addToCart(product.slug)}
+                        onClick={() =>
+                          addToCart(product.slug, 1, getDefaultVariantId(product))
+                        }
                       >
                         <ShoppingBag className="h-4 w-4" />
                         Add to Bag

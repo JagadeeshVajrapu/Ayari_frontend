@@ -48,6 +48,22 @@ export interface AdminProduct {
     price?: number;
     compareAtPrice?: number;
   }>;
+  variants?: Array<{
+    id: string;
+    sku: string;
+    name: string;
+    colorHex?: string | null;
+    variantType: string;
+    price?: number | null;
+    compareAtPrice?: number | null;
+    stockQuantity: number;
+    sortOrder?: number;
+    isDefault: boolean;
+    isActive: boolean;
+    image?: string | null;
+    images: AdminProductImage[];
+    galleryImages: AdminProductImage[];
+  }>;
   image: string | null;
   images: AdminProductImage[];
   featuredImages: AdminProductImage[];
@@ -61,7 +77,16 @@ export interface AdminOrder {
   totalAmount: number;
   createdAt: string;
   customer: { id: string; email: string; name: string };
-  items: Array<{ productName: string; quantity: number; totalPrice: number }>;
+  items: Array<{
+    productName: string;
+    productSku: string;
+    variantId?: string | null;
+    variantName?: string | null;
+    variantImageUrl?: string | null;
+    quantity: number;
+    totalPrice: number;
+    unitPrice?: number;
+  }>;
 }
 
 export interface AdminCustomer {
@@ -125,6 +150,21 @@ interface CreateProductPayload {
     price?: number;
     compareAtPrice?: number;
   }>;
+  variants?: Array<{
+    id?: string;
+    sku: string;
+    name: string;
+    colorHex?: string;
+    variantType?: string;
+    price?: number;
+    compareAtPrice?: number;
+    stockQuantity: number;
+    sortOrder?: number;
+    isDefault?: boolean;
+    isActive?: boolean;
+    productImages: ProductImagePayload[];
+    galleryImages?: ProductImagePayload[];
+  }>;
   productImages: ProductImagePayload[];
   featuredImages: ProductImagePayload[];
   isActive?: boolean;
@@ -150,7 +190,8 @@ export const adminService = {
   updateProduct: (id: string, data: Partial<CreateProductPayload>) =>
     api.patch(`/admin/products/${id}`, data),
 
-  deleteProduct: (id: string) => api.delete(`/admin/products/${id}`),
+  deleteProduct: (id: string) =>
+    api.delete<ApiResponse<{ mode: 'deleted' }>>(`/admin/products/${id}`),
 
   uploadProductImage: (
     file: File,
@@ -158,6 +199,7 @@ export const adminService = {
       type?: 'product' | 'gallery' | 'featured';
       categoryName: string;
       productName: string;
+      variantName?: string;
     },
   ) => {
     const formData = new FormData();
@@ -172,6 +214,7 @@ export const adminService = {
           type,
           categoryName: options.categoryName,
           productName: options.productName,
+          ...(options.variantName ? { variantName: options.variantName } : {}),
         },
         headers: { 'Content-Type': 'multipart/form-data' },
       },

@@ -3,9 +3,10 @@
 import { useEffect, useState } from 'react';
 import { catalogService } from '@/services/catalog.service';
 import { mapApiProductToListing } from '@/lib/catalog-mappers';
-import type { CartLineItem } from '@/features/cart/lib/cart-calculations';
+import { buildCartLineItem, type CartLineItem } from '@/features/cart/lib/cart-calculations';
+import type { CartItemRef } from '@/features/shop/lib/cart-keys';
 
-export function useCartLineItems(cart: { productId: string; quantity: number }[]) {
+export function useCartLineItems(cart: CartItemRef[]) {
   const [lineItems, setLineItems] = useState<CartLineItem[]>([]);
   const [loading, setLoading] = useState(cart.length > 0);
   const [error, setError] = useState('');
@@ -27,11 +28,7 @@ export function useCartLineItems(cart: { productId: string; quantity: number }[]
         try {
           const { data } = await catalogService.getProduct(item.productId);
           const product = mapApiProductToListing(data.data.product);
-          return {
-            product,
-            quantity: item.quantity,
-            lineTotal: product.price * item.quantity,
-          } satisfies CartLineItem;
+          return buildCartLineItem(product, item.quantity, item.variantId);
         } catch {
           return null;
         }

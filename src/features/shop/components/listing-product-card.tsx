@@ -10,6 +10,7 @@ import { StarRating } from './star-rating';
 import { ProductPrice } from '@/components/common/product-price';
 import { useShopStore } from '@/features/shop/stores/shop.store';
 import type { ListingProduct } from '@/types/product.types';
+import { getDefaultVariantId } from '@/lib/product-variations';
 import { cn } from '@/lib/utils';
 
 interface ListingProductCardProps {
@@ -28,7 +29,7 @@ export function ListingProductCard({ product, index, onQuickView }: ListingProdu
     e.preventDefault();
     e.stopPropagation();
     if (!product.inStock) return;
-    addToCart(product.slug);
+    addToCart(product.slug, 1, getDefaultVariantId(product));
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 1500);
   };

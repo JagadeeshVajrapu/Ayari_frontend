@@ -7,6 +7,7 @@ import { Plus, ShoppingBag } from 'lucide-react';
 import { formatPrice, useShopStore } from '@/features/shop/stores/shop.store';
 import { Button } from '@/components/ui/button';
 import type { ListingProduct } from '@/types/product.types';
+import { getDefaultVariantId } from '@/lib/product-variations';
 
 interface FrequentlyBoughtTogetherProps {
   products: ListingProduct[];
@@ -33,7 +34,7 @@ export function FrequentlyBoughtTogether({ products }: FrequentlyBoughtTogetherP
   };
 
   const addBundleToCart = () => {
-    selectedProducts.forEach((p) => addToCart(p.slug));
+    selectedProducts.forEach((p) => addToCart(p.slug, 1, getDefaultVariantId(p)));
   };
 
   if (products.length < 2) return null;

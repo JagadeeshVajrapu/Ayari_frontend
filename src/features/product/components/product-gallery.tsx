@@ -53,7 +53,7 @@ export function ProductGallery({ images, featuredImages = [], name }: ProductGal
 
   useEffect(() => {
     setActiveIndex(0);
-  }, [name]);
+  }, [name, images, featuredImages]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

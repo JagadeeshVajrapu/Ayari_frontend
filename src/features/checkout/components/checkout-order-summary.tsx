@@ -59,20 +59,21 @@ export function CheckoutOrderSummary({
 
       <ul className="mt-5 max-h-64 space-y-3 overflow-y-auto pr-1">
         {lineItems.map((item) => (
-          <li key={item.product.id} className="flex gap-3">
+          <li key={`${item.product.id}-${item.variantId ?? 'base'}`} className="flex gap-3">
             <div className="relative h-16 w-14 shrink-0 overflow-hidden rounded-xl">
               <Image
-                src={item.product.image}
-                alt={item.product.name}
+                src={item.image}
+                alt={item.displayName}
                 fill
                 className="object-cover"
                 sizes="56px"
               />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-foreground">{item.product.name}</p>
+              <p className="truncate text-sm font-medium text-foreground">{item.displayName}</p>
               <p className="text-xs text-ink-muted">
-                Qty {item.quantity} · {formatPrice(item.product.price)}
+                Qty {item.quantity} · {formatPrice(item.unitPrice)}
+                {item.sku ? ` · SKU ${item.sku}` : ''}
               </p>
             </div>
             <p className="shrink-0 text-sm font-medium">{formatPrice(item.lineTotal)}</p>

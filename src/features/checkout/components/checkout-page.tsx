@@ -66,6 +66,7 @@ export function CheckoutPage() {
   const buildPayload = (data: CheckoutFormData): CreatePaymentOrderPayload => ({
     items: lineItems.map((item) => ({
       productId: item.product.slug,
+      ...(item.variantId ? { variantId: item.variantId } : {}),
       quantity: item.quantity,
     })),
     shipping: data.shipping,
