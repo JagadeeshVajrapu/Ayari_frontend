@@ -141,6 +141,112 @@ export function variantsToSetVariants(variants: ProductVariant[]): SetVariant[] 
     }));
 }
 
+/** Extract a displayable item-count label from names like "Pack of 2 (Blue)" or "5". */
+export function extractItemCountLabel(name: string): string {
+  const packMatch = name.match(/pack\s*of\s*(\d+)/i);
+  if (packMatch?.[1]) return packMatch[1];
+  const leadingNumber = name.match(/^(\d+)\b/);
+  if (leadingNumber?.[1]) return leadingNumber[1];
+  const anyNumber = name.match(/(\d+)/);
+  if (anyNumber?.[1]) return anyNumber[1];
+  return name.trim();
+}
+
+function embeddedColorFromSetName(name: string): string | null {
+  const paren = name.match(/\(([^)]+)\)/);
+  if (paren?.[1]) return paren[1].trim();
+  return null;
+}
+
+function setMentionsColor(set: SetVariant, colorName: string): boolean {
+  const embedded = embeddedColorFromSetName(set.name);
+  if (embedded) return embedded.toLowerCase() === colorName.toLowerCase();
+  return set.name.toLowerCase().includes(colorName.toLowerCase());
+}
+
+function setHasAnyKnownColor(set: SetVariant, colorNames: string[]): boolean {
+  if (embeddedColorFromSetName(set.name)) return true;
+  const lower = set.name.toLowerCase();
+  return colorNames.some((color) => color && lower.includes(color.toLowerCase()));
+}
+
+export interface NumberOfItemsOption {
+  /** Stable key for the UI button (e.g. "1", "2", "5") */
+  key: string;
+  /** Button label shown to the shopper */
+  label: string;
+  /** Concrete SET variant id for the current colour (or generic set) */
+  setId: string;
+  price?: number;
+  compareAtPrice?: number;
+}
+
+/**
+ * Build Amazon-style "Number of Items" options.
+ * When SET names embed a colour (e.g. "Pack of 1 (Blue)"), options are filtered
+ * to the selected colour so Blue only shows Blue packs.
+ */
+export function getNumberOfItemsOptions(
+  setVariants: SetVariant[],
+  selectedColorName?: string | null,
+  colorNames: string[] = [],
+): NumberOfItemsOption[] {
+  if (!setVariants.length) return [];
+
+  const filtered = selectedColorName
+    ? setVariants.filter((set) => {
+        if (setHasAnyKnownColor(set, colorNames)) {
+          return setMentionsColor(set, selectedColorName);
+        }
+        // Generic pack (no colour in name) — available for every colour
+        return true;
+      })
+    : setVariants;
+
+  const source = filtered.length ? filtered : setVariants;
+  const seen = new Set<string>();
+  const options: NumberOfItemsOption[] = [];
+
+  for (const set of source) {
+    const label = extractItemCountLabel(set.name);
+    const key = label.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    options.push({
+      key,
+      label,
+      setId: set.id,
+      price: set.price,
+      compareAtPrice: set.compareAtPrice,
+    });
+  }
+
+  return options.sort((a, b) => {
+    const aNum = Number(a.label);
+    const bNum = Number(b.label);
+    if (!Number.isNaN(aNum) && !Number.isNaN(bNum)) return aNum - bNum;
+    return a.label.localeCompare(b.label);
+  });
+}
+
+/** Prefer the SET sku that matches colour + item count when both axes exist. */
+export function resolveColorAndSetVariantId(
+  variants: ProductVariant[],
+  colorId: string | null,
+  setId: string | null,
+): string | null {
+  const active = variants.filter((v) => v.isActive);
+  if (!active.length) return setId ?? colorId;
+
+  const setVariant = setId ? active.find((v) => v.id === setId) : undefined;
+  if (setVariant) return setVariant.id;
+
+  const colorVariant = colorId ? active.find((v) => v.id === colorId) : undefined;
+  if (colorVariant) return colorVariant.id;
+
+  return active.find((v) => v.isDefault)?.id ?? active[0]?.id ?? null;
+}
+
 export function resolveVariantGalleryImages(variant: ProductVariant | null): string[] {
   if (!variant) return [];
   const productUrls = variant.images.map((img) => resolveMediaUrl(img.url, PRODUCT_PLACEHOLDER));

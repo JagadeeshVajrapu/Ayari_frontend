@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import Image from 'next/image';
 import Link from 'next/link';
 import { Eye, GitCompareArrows, Heart, ShoppingBag } from 'lucide-react';
+import { SafeImage } from '@/components/ui/safe-image';
 import { StarRating } from './star-rating';
 import { ProductPrice } from '@/components/common/product-price';
 import { useShopStore } from '@/features/shop/stores/shop.store';
@@ -41,15 +41,12 @@ export function ListingProductRow({ product, index, onQuickView }: ListingProduc
       className="group flex gap-4 rounded-3xl border border-border/60 bg-surface-elevated p-4 transition-all duration-500 hover:border-champagne/30 hover:shadow-medium sm:gap-6 sm:p-5"
     >
       <Link href={`/products/${product.slug}`} className="relative h-36 w-28 shrink-0 overflow-hidden rounded-2xl sm:h-44 sm:w-36">
-        <Image
+        <SafeImage
           src={product.image}
           alt={product.name}
           fill
           className="image-zoom object-cover"
           sizes="144px"
-          unoptimized={
-            product.image.includes('localhost') || product.image.includes('/uploads/')
-          }
         />
         {product.discountPercent && (
           <span className="absolute top-2 left-2 rounded-full bg-ink px-2 py-0.5 text-[9px] font-bold text-champagne">

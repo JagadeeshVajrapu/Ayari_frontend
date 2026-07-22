@@ -189,6 +189,24 @@ export function mapApiProductToListing(product: ApiProduct): ListingProduct {
   const defaultVariant =
     mappedVariants?.find((v) => v.isDefault) ?? mappedVariants?.[0] ?? null;
 
+  const imageSourceVariant = (() => {
+    if (
+      defaultVariant &&
+      (defaultVariant.image ||
+        defaultVariant.images.length > 0 ||
+        defaultVariant.galleryImages.length > 0)
+    ) {
+      return defaultVariant;
+    }
+    const colors = (mappedVariants ?? []).filter((v) => v.variantType === 'COLOR');
+    const pool = colors.length ? colors : (mappedVariants ?? []);
+    return (
+      pool.find(
+        (v) => v.image || v.images.length > 0 || v.galleryImages.length > 0,
+      ) ?? null
+    );
+  })();
+
   const effectivePrice = defaultVariant?.price ?? product.price;
   const effectiveMrp = defaultVariant?.compareAtPrice ?? product.compareAtPrice;
   const mrp = effectiveMrp;
@@ -207,11 +225,11 @@ export function mapApiProductToListing(product: ApiProduct): ListingProduct {
     : []
   ).map((url) => resolveMediaUrl(url, PRODUCT_PLACEHOLDER));
 
-  const variantGallery = defaultVariant
+  const variantGallery = imageSourceVariant
     ? [
-        ...defaultVariant.images.map((img) => img.url),
-        ...defaultVariant.galleryImages.map((img) => img.url),
-      ]
+        ...imageSourceVariant.images.map((img) => img.url),
+        ...imageSourceVariant.galleryImages.map((img) => img.url),
+      ].filter(Boolean)
     : [];
 
   const images =

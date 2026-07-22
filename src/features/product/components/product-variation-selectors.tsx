@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { formatPrice } from '@/features/shop/stores/shop.store';
 import type { ColorVariant, SetVariant } from '@/lib/product-variations';
 import {
+  extractItemCountLabel,
+  getNumberOfItemsOptions,
   resolveColorImage,
   resolveVariantPrice,
 } from '@/lib/product-variations';
@@ -84,18 +86,45 @@ export function ProductVariationSelectors({
   onSetChange,
 }: ProductVariationSelectorsProps) {
   const selectedColor = colorVariants.find((c) => c.id === selectedColorId);
+  const colorNames = colorVariants.map((c) => c.name);
+  const itemOptions = getNumberOfItemsOptions(
+    setVariants,
+    selectedColor?.name ?? null,
+    colorNames,
+  );
+  const selectedItem =
+    itemOptions.find((opt) => opt.setId === selectedSetId) ??
+    itemOptions.find(
+      (opt) =>
+        opt.label.toLowerCase() ===
+        extractItemCountLabel(setVariants.find((s) => s.id === selectedSetId)?.name ?? '').toLowerCase(),
+    );
 
   return (
     <div className="space-y-5">
       {colorVariants.length > 0 && (
         <div className="space-y-2">
           <p className="text-sm text-foreground">
-            <span className="font-semibold">Color:</span>{' '}
-            <span className="text-ink-muted">{selectedColor?.name ?? 'Select'}</span>
+            <span className="font-semibold">Colour:</span>{' '}
+            <span className="font-semibold text-foreground">
+              {selectedColor?.name ?? 'Select'}
+            </span>
           </p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {colorVariants.map((color) => {
-              const { price, mrp } = resolveVariantPrice(basePrice, baseMrp, color, null);
+              const colorItemOptions = getNumberOfItemsOptions(
+                setVariants,
+                color.name,
+                colorNames,
+              );
+              const matchingSet =
+                setVariants.find((s) => s.id === colorItemOptions[0]?.setId) ?? null;
+              const { price, mrp } = resolveVariantPrice(
+                basePrice,
+                baseMrp,
+                color,
+                matchingSet,
+              );
               const image = resolveColorImage(color.imageUrl);
               const selected = selectedColorId === color.id;
               return (
@@ -103,6 +132,7 @@ export function ProductVariationSelectors({
                   key={color.id}
                   type="button"
                   onClick={() => onColorChange(color.id)}
+                  aria-pressed={selected}
                   className={cn(
                     'flex flex-col overflow-hidden rounded-lg border-2 bg-background text-left transition-all hover:border-blue-400',
                     selected
@@ -124,40 +154,31 @@ export function ProductVariationSelectors({
         </div>
       )}
 
-      {setVariants.length > 0 && (
+      {itemOptions.length > 0 && (
         <div className="space-y-2">
           <p className="text-sm text-foreground">
-            <span className="font-semibold">Set / Pack:</span>{' '}
-            <span className="text-ink-muted">
-              {setVariants.find((s) => s.id === selectedSetId)?.name ?? 'Select'}
+            <span className="font-semibold">Number of Items:</span>{' '}
+            <span className="font-semibold text-foreground">
+              {selectedItem?.label ?? 'Select'}
             </span>
           </p>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {setVariants.map((set) => {
-              const { price, mrp } = resolveVariantPrice(
-                basePrice,
-                baseMrp,
-                selectedColor,
-                set,
-              );
-              const selected = selectedSetId === set.id;
+          <div className="flex flex-wrap gap-2">
+            {itemOptions.map((option) => {
+              const selected = selectedItem?.key === option.key;
               return (
                 <button
-                  key={set.id}
+                  key={option.key}
                   type="button"
-                  onClick={() => onSetChange(set.id)}
+                  onClick={() => onSetChange(option.setId)}
+                  aria-pressed={selected}
                   className={cn(
-                    'rounded-lg border-2 px-3 py-3 text-left transition-all hover:border-blue-400',
+                    'min-w-12 rounded-md border-2 px-4 py-2 text-sm font-medium tabular-nums transition-all hover:border-blue-400',
                     selected
-                      ? 'border-blue-600 bg-blue-50 ring-1 ring-blue-600/30 dark:bg-blue-950/40'
-                      : 'border-border bg-background',
+                      ? 'border-blue-600 bg-blue-50 text-foreground ring-1 ring-blue-600/20 dark:bg-blue-950/40'
+                      : 'border-border bg-background text-foreground',
                   )}
                 >
-                  <p className="text-sm font-medium text-foreground">{set.name}</p>
-                  {set.label && (
-                    <p className="mt-0.5 text-xs text-muted-foreground">{set.label}</p>
-                  )}
-                  <MiniPrice price={price} mrp={mrp} className="mt-2" />
+                  {option.label}
                 </button>
               );
             })}

@@ -1,16 +1,20 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ListingProduct } from '@/types/product.types';
 import type { ColorVariant, ProductVariant, SetVariant } from '@/lib/product-variations';
 import {
   buildDisplayTitle,
+  extractItemCountLabel,
+  getNumberOfItemsOptions,
   reorderGalleryForColor,
+  resolveColorAndSetVariantId,
   resolveProductVariant,
   resolveVariantGalleryImages,
   resolveVariantPrice,
   variantsToColorVariants,
   variantsToSetVariants,
+  type NumberOfItemsOption,
 } from '@/lib/product-variations';
 
 export interface ProductVariationState {
@@ -21,6 +25,9 @@ export interface ProductVariationState {
   selectedSize: string;
   selectedColor: ColorVariant | null;
   selectedSet: SetVariant | null;
+  colorVariants: ColorVariant[];
+  setVariants: SetVariant[];
+  numberOfItemsOptions: NumberOfItemsOption[];
   displayTitle: string;
   activePrice: number;
   activeMrp?: number;
@@ -49,37 +56,82 @@ export function useProductVariations(product: ListingProduct): ProductVariationS
     return product.setVariants ?? [];
   }, [hasRelationalVariants, relationalVariants, product.setVariants]);
 
+  const colorNames = useMemo(() => colorVariants.map((c) => c.name), [colorVariants]);
   const sizes = product.sizes ?? [];
 
   const defaultVariantId =
     relationalVariants.find((v) => v.isDefault)?.id ?? relationalVariants[0]?.id ?? null;
 
-  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(
-    defaultVariantId ?? colorVariants[0]?.id ?? null,
-  );
-  const [selectedColorId, setSelectedColorId] = useState<string | null>(
-    colorVariants[0]?.id ?? null,
-  );
-  const [selectedSetId, setSelectedSetId] = useState<string | null>(
-    setVariants[0]?.id ?? null,
-  );
-  const [selectedSize, setSelectedSize] = useState(sizes[0] ?? '');
+  const initialColorId =
+    (defaultVariantId &&
+      colorVariants.find((c) => c.id === defaultVariantId)?.id) ||
+    colorVariants[0]?.id ||
+    null;
 
-  const selectedVariant = useMemo(() => {
-    if (!hasRelationalVariants) return null;
-    const id = selectedVariantId ?? selectedColorId ?? selectedSetId;
-    return resolveProductVariant(product, id);
-  }, [hasRelationalVariants, product, selectedVariantId, selectedColorId, selectedSetId]);
+  const initialItemOptions = getNumberOfItemsOptions(
+    setVariants,
+    colorVariants.find((c) => c.id === initialColorId)?.name ?? null,
+    colorNames,
+  );
+
+  const initialSetId =
+    (defaultVariantId && setVariants.find((s) => s.id === defaultVariantId)?.id) ||
+    initialItemOptions[0]?.setId ||
+    setVariants[0]?.id ||
+    null;
+
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(
+    defaultVariantId ?? initialColorId ?? initialSetId,
+  );
+  const [selectedColorId, setSelectedColorId] = useState<string | null>(initialColorId);
+  const [selectedSetId, setSelectedSetId] = useState<string | null>(initialSetId);
+  const [selectedSize, setSelectedSize] = useState(sizes[0] ?? '');
 
   const selectedColor = useMemo(
     () => colorVariants.find((c) => c.id === selectedColorId) ?? null,
     [colorVariants, selectedColorId],
   );
 
+  const numberOfItemsOptions = useMemo(
+    () => getNumberOfItemsOptions(setVariants, selectedColor?.name ?? null, colorNames),
+    [setVariants, selectedColor?.name, colorNames],
+  );
+
+  // When colour changes, keep the same item-count if available; otherwise pick the first.
+  useEffect(() => {
+    if (!numberOfItemsOptions.length) return;
+    const stillValid = numberOfItemsOptions.some((opt) => opt.setId === selectedSetId);
+    if (stillValid) return;
+
+    const currentLabel = selectedSetId
+      ? extractItemCountLabel(setVariants.find((s) => s.id === selectedSetId)?.name ?? '')
+      : '';
+    const sameCount = numberOfItemsOptions.find(
+      (opt) => opt.label.toLowerCase() === currentLabel.toLowerCase(),
+    );
+    setSelectedSetId(sameCount?.setId ?? numberOfItemsOptions[0].setId);
+  }, [numberOfItemsOptions, selectedSetId, setVariants]);
+
   const selectedSet = useMemo(
     () => setVariants.find((s) => s.id === selectedSetId) ?? null,
     [setVariants, selectedSetId],
   );
+
+  const resolvedVariantId = useMemo(() => {
+    if (!hasRelationalVariants) return selectedVariantId;
+    return resolveColorAndSetVariantId(relationalVariants, selectedColorId, selectedSetId);
+  }, [
+    hasRelationalVariants,
+    relationalVariants,
+    selectedColorId,
+    selectedSetId,
+    selectedVariantId,
+  ]);
+
+  const selectedVariant = useMemo(() => {
+    if (!hasRelationalVariants) return null;
+    return resolveProductVariant(product, resolvedVariantId);
+  }, [hasRelationalVariants, product, resolvedVariantId]);
 
   const { price: activePrice, mrp: activeMrp, discountPercent } = useMemo(() => {
     if (selectedVariant) {
@@ -96,19 +148,33 @@ export function useProductVariations(product: ListingProduct): ProductVariationS
   }, [selectedVariant, product, selectedColor, selectedSet]);
 
   const displayTitle = useMemo(() => {
-    if (selectedVariant) {
-      return buildDisplayTitle(product.name, { id: selectedVariant.id, name: selectedVariant.name }, null);
-    }
     return buildDisplayTitle(product.name, selectedColor, selectedSet);
-  }, [product.name, selectedVariant, selectedColor, selectedSet]);
+  }, [product.name, selectedColor, selectedSet]);
 
   const galleryImages = useMemo(() => {
+    // Prefer colour images for the gallery so switching colour updates photos immediately.
+    if (selectedColor) {
+      const colorVariant = hasRelationalVariants
+        ? relationalVariants.find((v) => v.id === selectedColor.id)
+        : null;
+      if (colorVariant) {
+        const images = resolveVariantGalleryImages(colorVariant);
+        if (images.length) return images;
+      }
+      return reorderGalleryForColor(product.images, selectedColor.imageUrl);
+    }
     if (selectedVariant) {
       const images = resolveVariantGalleryImages(selectedVariant);
       return images.length ? images : product.images;
     }
-    return reorderGalleryForColor(product.images, selectedColor?.imageUrl);
-  }, [selectedVariant, product.images, selectedColor?.imageUrl]);
+    return product.images;
+  }, [
+    selectedColor,
+    selectedVariant,
+    hasRelationalVariants,
+    relationalVariants,
+    product.images,
+  ]);
 
   const activeSku = selectedVariant?.sku ?? product.sku ?? '';
   const activeStock = selectedVariant?.stockQuantity ?? product.stockCount;
@@ -116,7 +182,7 @@ export function useProductVariations(product: ListingProduct): ProductVariationS
 
   const setSelectedColor = (id: string | null) => {
     setSelectedColorId(id);
-    if (hasRelationalVariants && id) {
+    if (hasRelationalVariants && id && !setVariants.length) {
       setSelectedVariantId(id);
     }
   };
@@ -138,13 +204,16 @@ export function useProductVariations(product: ListingProduct): ProductVariationS
   };
 
   return {
-    selectedVariantId: selectedVariant?.id ?? selectedVariantId,
+    selectedVariantId: selectedVariant?.id ?? resolvedVariantId ?? selectedVariantId,
     selectedVariant,
     selectedColorId,
     selectedSetId,
     selectedSize,
     selectedColor,
     selectedSet,
+    colorVariants,
+    setVariants,
+    numberOfItemsOptions,
     displayTitle,
     activePrice,
     activeMrp,

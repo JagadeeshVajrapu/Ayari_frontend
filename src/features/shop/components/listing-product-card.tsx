@@ -2,10 +2,10 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import Image from 'next/image';
 import Link from 'next/link';
 import { Eye, GitCompareArrows, Heart, ShoppingBag } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { SafeImage } from '@/components/ui/safe-image';
 import { StarRating } from './star-rating';
 import { ProductPrice } from '@/components/common/product-price';
 import { useShopStore } from '@/features/shop/stores/shop.store';
@@ -47,15 +47,12 @@ export function ListingProductCard({ product, index, onQuickView }: ListingProdu
       <div className="relative overflow-hidden rounded-3xl bg-cream-dark shadow-soft transition-all duration-500 group-hover:shadow-premium dark:bg-surface">
         <Link href={`/products/${product.slug}`} className="block">
           <div className="relative aspect-[3/4] overflow-hidden">
-            <Image
+            <SafeImage
               src={product.image}
               alt={product.name}
               fill
               loading="lazy"
               quality={75}
-              unoptimized={
-                product.image.includes('localhost') || product.image.includes('/uploads/')
-              }
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
               className="image-zoom object-cover"
             />

@@ -40,6 +40,8 @@ export function ProductBuyBox({ product, variation, compact = false, onBuyNow }:
     selectedColorId,
     selectedSetId,
     selectedVariantId,
+    colorVariants,
+    setVariants,
     setSelectedColor,
     setSelectedSet,
   } = variation;
@@ -60,9 +62,9 @@ export function ProductBuyBox({ product, variation, compact = false, onBuyNow }:
   };
 
   const hasVariations =
-    (product.variants?.length ?? 0) > 0 ||
-    (product.colorVariants?.length ?? 0) > 0 ||
-    (product.setVariants?.length ?? 0) > 0;
+    colorVariants.length > 0 ||
+    setVariants.length > 0 ||
+    (product.variants?.length ?? 0) > 0;
 
   return (
     <div className={cn(!compact && 'space-y-6')}>
@@ -135,8 +137,8 @@ export function ProductBuyBox({ product, variation, compact = false, onBuyNow }:
         <ProductVariationSelectors
           basePrice={product.price}
           baseMrp={product.originalPrice}
-          colorVariants={product.colorVariants}
-          setVariants={product.setVariants}
+          colorVariants={colorVariants}
+          setVariants={setVariants}
           selectedColorId={selectedColorId}
           selectedSetId={selectedSetId}
           onColorChange={setSelectedColor}

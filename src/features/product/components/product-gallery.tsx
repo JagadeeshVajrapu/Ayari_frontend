@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ZoomIn, ChevronLeft, ChevronRight } from 'lucide-react';
+import { SafeImage } from '@/components/ui/safe-image';
 import { cn } from '@/lib/utils';
 
 interface ProductGalleryProps {
@@ -134,7 +134,7 @@ export function ProductGallery({ images, featuredImages = [], name }: ProductGal
             transition={{ duration: 0.3, ease: 'easeInOut' }}
             className="absolute inset-0"
           >
-            <Image
+            <SafeImage
               src={active.url}
               alt={`${name} — view ${activeIndex + 1} of ${gallery.length}`}
               fill
@@ -211,7 +211,7 @@ export function ProductGallery({ images, featuredImages = [], name }: ProductGal
                   : 'border-transparent opacity-70 hover:opacity-100',
               )}
             >
-              <Image
+              <SafeImage
                 src={item.url}
                 alt={`${name} thumbnail ${i + 1}`}
                 fill
@@ -245,7 +245,7 @@ export function ProductGallery({ images, featuredImages = [], name }: ProductGal
                       : 'border-border/60 opacity-75 hover:opacity-100',
                   )}
                 >
-                  <Image
+                  <SafeImage
                     src={item.url}
                     alt={`${name} featured`}
                     fill

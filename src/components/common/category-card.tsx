@@ -1,9 +1,10 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowUpRight } from 'lucide-react';
+import { SafeImage } from '@/components/ui/safe-image';
+import { CATEGORY_PLACEHOLDER } from '@/lib/catalog-constants';
 import { cn } from '@/lib/utils';
 
 interface CategoryCardProps {
@@ -15,15 +16,6 @@ interface CategoryCardProps {
   index?: number;
 }
 
-function shouldBypassOptimizer(src: string): boolean {
-  return (
-    src.startsWith('blob:') ||
-    src.startsWith('data:') ||
-    src.includes('localhost') ||
-    src.includes('/uploads/')
-  );
-}
-
 export function CategoryCard({
   title,
   subtitle,
@@ -32,8 +24,6 @@ export function CategoryCard({
   className,
   index = 0,
 }: CategoryCardProps) {
-  const unoptimized = shouldBypassOptimizer(image);
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 40, scale: 0.96 }}
@@ -46,13 +36,13 @@ export function CategoryCard({
       <Link href={href} className="block">
         <div className="relative overflow-hidden rounded-4xl shadow-medium transition-shadow duration-500 group-hover:shadow-premium">
           <div className="relative aspect-[4/5] overflow-hidden bg-ink">
-            <Image
+            <SafeImage
               src={image}
+              fallback={CATEGORY_PLACEHOLDER}
               alt={`${title} — ${subtitle}`}
               fill
               loading="lazy"
               quality={80}
-              unoptimized={unoptimized}
               sizes="(max-width: 768px) 100vw, 25vw"
               className="image-zoom object-cover"
             />

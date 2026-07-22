@@ -357,6 +357,8 @@ export function AdminProductFormModal({
           setError('Each variant needs a SKU');
           return;
         }
+        // Number of Items (SET) options are compact buttons — images come from Colour.
+        if (variant.variantType === 'SET') continue;
         const hasReadyImage = variant.productImages.some(
           (img) => Boolean(img.url) || Boolean(img.file),
         );
@@ -364,6 +366,11 @@ export function AdminProductFormModal({
           setError(`Add at least one product image for "${variant.name || 'variant'}"`);
           return;
         }
+      }
+      const hasOnlySets = form.variants.every((v) => v.variantType === 'SET');
+      if (hasOnlySets && form.productImages.length < 1) {
+        setError('Add at least one product image, or add a colour with images');
+        return;
       }
     } else if (form.productImages.length < 1) {
       setError('Add at least one product image');
@@ -486,11 +493,18 @@ export function AdminProductFormModal({
 
       if (variants.length > 0) {
         for (const variant of variants) {
+          if (variant.variantType === 'SET') continue;
           if (!variant.productImages.some((img) => Boolean(img.url))) {
             throw new Error(
               `Variant "${variant.name}" needs at least one uploaded product image.`,
             );
           }
+        }
+        const needsProductImage =
+          variants.every((v) => v.variantType === 'SET') &&
+          !productImages.some((img) => Boolean(img.url));
+        if (needsProductImage) {
+          throw new Error('Add at least one product image, or add a colour with images');
         }
       } else if (!productImages.some((img) => Boolean(img.url))) {
         throw new Error('Add at least one product image');

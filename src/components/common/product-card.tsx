@@ -2,11 +2,11 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import Image from 'next/image';
 import Link from 'next/link';
 import { Heart, ShoppingBag } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { SafeImage } from '@/components/ui/safe-image';
 import { ProductPrice } from '@/components/common/product-price';
 import { useShopStore } from '@/features/shop/stores/shop.store';
 import { cn } from '@/lib/utils';
@@ -75,15 +75,12 @@ export function ProductCard({
               variant === 'compact' ? 'aspect-square' : 'aspect-[3/4]',
             )}
           >
-            <Image
+            <SafeImage
               src={product.image}
               alt={product.name}
               fill
               loading="lazy"
               quality={75}
-              unoptimized={
-                product.image.includes('localhost') || product.image.includes('/uploads/')
-              }
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
               className="image-zoom object-cover"
             />
