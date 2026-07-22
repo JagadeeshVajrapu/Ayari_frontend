@@ -328,9 +328,30 @@ export function AdminProductVariantsSection({
         </label>
       </div>
 
+      <AdminImageUploadSection
+        label="Pack / number-of-items images"
+        description="Upload photos for this count (e.g. Pack of 2 showing two products). Shown when the customer selects this number."
+        images={variant.productImages}
+        min={0}
+        max={10}
+        enablePrimary
+        disabled={disabled}
+        onChange={(productImages) => updateVariant(variant.clientId, { productImages })}
+      />
+
+      <AdminImageUploadSection
+        label="Extra gallery images"
+        description="Optional extra angles for this pack only."
+        images={variant.galleryImages}
+        min={0}
+        max={20}
+        disabled={disabled}
+        onChange={(galleryImages) => updateVariant(variant.clientId, { galleryImages })}
+      />
+
       <p className="text-[11px] text-muted-foreground">
-        Shown on the product page as a compact button (like 3 / 5). No images needed —
-        colour photos are used instead.
+        Tip: name packs with colour when needed, e.g. &quot;Pack of 2 (Pink)&quot;, so Pink + 2
+        shows these photos — not the single-item colour photo.
       </p>
     </div>
   );

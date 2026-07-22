@@ -6,14 +6,14 @@ import type { ColorVariant, ProductVariant, SetVariant } from '@/lib/product-var
 import {
   buildDisplayTitle,
   extractItemCountLabel,
+  findVariantForColorAndCount,
   getNumberOfItemsOptions,
-  reorderGalleryForColor,
   resolveColorAndSetVariantId,
   resolveProductVariant,
-  resolveVariantGalleryImages,
+  resolveSelectionGalleryImages,
+  resolveShopColorVariants,
+  resolveShopSetVariants,
   resolveVariantPrice,
-  variantsToColorVariants,
-  variantsToSetVariants,
   type NumberOfItemsOption,
 } from '@/lib/product-variations';
 
@@ -47,12 +47,12 @@ export function useProductVariations(product: ListingProduct): ProductVariationS
   const hasRelationalVariants = relationalVariants.length > 0;
 
   const colorVariants = useMemo(() => {
-    if (hasRelationalVariants) return variantsToColorVariants(relationalVariants);
+    if (hasRelationalVariants) return resolveShopColorVariants(relationalVariants);
     return product.colorVariants ?? [];
   }, [hasRelationalVariants, relationalVariants, product.colorVariants]);
 
   const setVariants = useMemo(() => {
-    if (hasRelationalVariants) return variantsToSetVariants(relationalVariants);
+    if (hasRelationalVariants) return resolveShopSetVariants(relationalVariants);
     return product.setVariants ?? [];
   }, [hasRelationalVariants, relationalVariants, product.setVariants]);
 
@@ -62,11 +62,21 @@ export function useProductVariations(product: ListingProduct): ProductVariationS
   const defaultVariantId =
     relationalVariants.find((v) => v.isDefault)?.id ?? relationalVariants[0]?.id ?? null;
 
-  const initialColorId =
-    (defaultVariantId &&
-      colorVariants.find((c) => c.id === defaultVariantId)?.id) ||
-    colorVariants[0]?.id ||
-    null;
+  const initialColorId = (() => {
+    if (!colorVariants.length) return null;
+    if (defaultVariantId) {
+      const fromDefault = colorVariants.find((c) => c.id === defaultVariantId);
+      if (fromDefault) return fromDefault.id;
+      const defaultVariant = relationalVariants.find((v) => v.id === defaultVariantId);
+      if (defaultVariant) {
+        const match = colorVariants.find((c) =>
+          defaultVariant.name.toLowerCase().includes(c.name.toLowerCase()),
+        );
+        if (match) return match.id;
+      }
+    }
+    return colorVariants[0]?.id ?? null;
+  })();
 
   const initialItemOptions = getNumberOfItemsOptions(
     setVariants,
@@ -109,7 +119,9 @@ export function useProductVariations(product: ListingProduct): ProductVariationS
     const sameCount = numberOfItemsOptions.find(
       (opt) => opt.label.toLowerCase() === currentLabel.toLowerCase(),
     );
-    setSelectedSetId(sameCount?.setId ?? numberOfItemsOptions[0].setId);
+    const nextId = sameCount?.setId ?? numberOfItemsOptions[0].setId;
+    setSelectedSetId(nextId);
+    setSelectedVariantId(nextId);
   }, [numberOfItemsOptions, selectedSetId, setVariants]);
 
   const selectedSet = useMemo(
@@ -117,15 +129,47 @@ export function useProductVariations(product: ListingProduct): ProductVariationS
     [setVariants, selectedSetId],
   );
 
-  const resolvedVariantId = useMemo(() => {
-    if (!hasRelationalVariants) return selectedVariantId;
-    return resolveColorAndSetVariantId(relationalVariants, selectedColorId, selectedSetId);
+  const itemCountLabel =
+    numberOfItemsOptions.find((opt) => opt.setId === selectedSetId)?.label ??
+    (selectedSet ? extractItemCountLabel(selectedSet.name) : null) ??
+    numberOfItemsOptions[0]?.label ??
+    null;
+
+  const matchedPackVariant = useMemo(() => {
+    if (!hasRelationalVariants) return null;
+    return findVariantForColorAndCount(
+      relationalVariants,
+      selectedColor?.name ?? null,
+      itemCountLabel,
+      colorNames,
+    );
   }, [
     hasRelationalVariants,
     relationalVariants,
+    selectedColor?.name,
+    itemCountLabel,
+    colorNames,
+  ]);
+
+  const resolvedVariantId = useMemo(() => {
+    if (!hasRelationalVariants) return selectedVariantId;
+    if (matchedPackVariant) return matchedPackVariant.id;
+    return resolveColorAndSetVariantId(
+      relationalVariants,
+      selectedColorId,
+      selectedSetId,
+      selectedColor?.name ?? null,
+      colorNames,
+    );
+  }, [
+    hasRelationalVariants,
+    matchedPackVariant,
+    relationalVariants,
     selectedColorId,
     selectedSetId,
+    selectedColor?.name,
     selectedVariantId,
+    colorNames,
   ]);
 
   const selectedVariant = useMemo(() => {
@@ -152,28 +196,28 @@ export function useProductVariations(product: ListingProduct): ProductVariationS
   }, [product.name, selectedColor, selectedSet]);
 
   const galleryImages = useMemo(() => {
-    // Prefer colour images for the gallery so switching colour updates photos immediately.
-    if (selectedColor) {
-      const colorVariant = hasRelationalVariants
-        ? relationalVariants.find((v) => v.id === selectedColor.id)
-        : null;
-      if (colorVariant) {
-        const images = resolveVariantGalleryImages(colorVariant);
-        if (images.length) return images;
-      }
-      return reorderGalleryForColor(product.images, selectedColor.imageUrl);
+    if (!hasRelationalVariants) {
+      return product.images.length ? product.images : [];
     }
-    if (selectedVariant) {
-      const images = resolveVariantGalleryImages(selectedVariant);
-      return images.length ? images : product.images;
-    }
-    return product.images;
+
+    const resolved = resolveSelectionGalleryImages({
+      variants: relationalVariants,
+      colorName: selectedColor?.name ?? null,
+      itemCount: itemCountLabel,
+      colorImageUrl: selectedColor?.imageUrl ?? null,
+      productImages: product.images,
+      allColorNames: colorNames,
+    });
+
+    return resolved.length ? resolved : product.images;
   }, [
-    selectedColor,
-    selectedVariant,
     hasRelationalVariants,
     relationalVariants,
+    selectedColor?.name,
+    selectedColor?.imageUrl,
+    itemCountLabel,
     product.images,
+    colorNames,
   ]);
 
   const activeSku = selectedVariant?.sku ?? product.sku ?? '';
