@@ -7,7 +7,24 @@ export const api = axios.create({
   baseURL: API_URL,
   withCredentials: true,
   headers: { 'Content-Type': 'application/json' },
+  timeout: 45_000,
 });
+
+function isTransientNetworkError(error: AxiosError): boolean {
+  if (error.response) return false;
+  const code = error.code ?? '';
+  return (
+    code === 'ECONNREFUSED' ||
+    code === 'ECONNABORTED' ||
+    code === 'ETIMEDOUT' ||
+    code === 'ERR_NETWORK' ||
+    error.message.includes('Network Error')
+  );
+}
+
+async function sleep(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 function getStoredAccessToken(): string | null {
   if (typeof window === 'undefined') return null;
@@ -35,7 +52,10 @@ function writeStoredAccessToken(accessToken: string): void {
   }
 }
 
-type RetriableConfig = InternalAxiosRequestConfig & { _retry?: boolean };
+type RetriableConfig = InternalAxiosRequestConfig & {
+  _retry?: boolean;
+  _networkRetryCount?: number;
+};
 
 type RefreshResult =
   | { status: 'ok'; accessToken: string }
@@ -110,6 +130,16 @@ export function setupAuthInterceptor(): void {
     async (error: AxiosError) => {
       const original = error.config as RetriableConfig | undefined;
       const status = error.response?.status;
+
+      // Brief backend restarts / cold Neon wake — retry a few times before surfacing.
+      if (original && isTransientNetworkError(error)) {
+        const attempt = original._networkRetryCount ?? 0;
+        if (attempt < 3) {
+          original._networkRetryCount = attempt + 1;
+          await sleep(400 * (attempt + 1));
+          return api(original);
+        }
+      }
 
       if (!original || status !== 401 || original._retry || isAuthRefreshUrl(original.url)) {
         return Promise.reject(error);
@@ -189,10 +219,8 @@ export const authService = {
 export function getApiErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
     if (!error.response) {
-      if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
-        return 'Cannot reach the server right now. Please try again in a moment.';
-      }
-      return 'Network error. Please check your connection and try again.';
+      // Never show localhost:5000 / "API server" wording — retries already ran.
+      return 'Something went wrong. Please try again.';
     }
 
     const data = error.response.data as
@@ -210,6 +238,13 @@ export function getApiErrorMessage(error: unknown): string {
     return data?.message ?? 'Something went wrong. Please try again.';
   }
   if (error instanceof Error && error.message) {
+    if (
+      /Cannot reach the API server|Make sure the backend is running|localhost:5000/i.test(
+        error.message,
+      )
+    ) {
+      return 'Something went wrong. Please try again.';
+    }
     return error.message;
   }
   return 'Something went wrong. Please try again.';

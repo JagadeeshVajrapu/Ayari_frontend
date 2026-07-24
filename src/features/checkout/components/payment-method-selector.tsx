@@ -3,6 +3,7 @@
 import type { UseFormRegister, FieldErrors, UseFormWatch } from 'react-hook-form';
 import { CreditCard, Banknote, Smartphone, Building2 } from 'lucide-react';
 import type { CheckoutFormData } from '@/features/checkout/schemas/checkout.schema';
+import { isRazorpayConfigured } from '@/features/checkout/lib/razorpay';
 import { cn } from '@/lib/utils';
 
 interface PaymentMethodSelectorProps {
@@ -38,9 +39,35 @@ export function PaymentMethodSelector({
   errors,
 }: PaymentMethodSelectorProps) {
   const selected = watch('paymentMethod');
+  const liveTestMode = isRazorpayConfigured();
 
   return (
     <div className="space-y-3">
+      {process.env.NODE_ENV === 'development' && (
+        <div className="rounded-2xl border border-amber-200/80 bg-amber-50 px-4 py-3 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
+          {liveTestMode ? (
+            <>
+              <p className="font-medium">Razorpay Test Mode</p>
+              <p className="mt-1 text-amber-800/90 dark:text-amber-200/80">
+                Use test cards only — e.g.{' '}
+                <span className="font-mono">4111 1111 1111 1111</span>, any future expiry, any
+                CVV. UPI/Net Banking test options appear in the Razorpay modal.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="font-medium">Local mock checkout</p>
+              <p className="mt-1 text-amber-800/90 dark:text-amber-200/80">
+                Online Pay completes without the Razorpay modal until you set matching Test Mode
+                keys in <span className="font-mono">backend/.env</span> and{' '}
+                <span className="font-mono">frontend/.env.local</span>, with{' '}
+                <span className="font-mono">RAZORPAY_MOCK=false</span>.
+              </p>
+            </>
+          )}
+        </div>
+      )}
+
       {METHODS.map((method) => {
         const Icon = method.icon;
         const isSelected = selected === method.id;

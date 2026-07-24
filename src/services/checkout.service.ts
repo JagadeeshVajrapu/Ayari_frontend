@@ -1,4 +1,4 @@
-import { api } from '@/services/auth.service';
+import { api, getApiErrorMessage } from '@/services/auth.service';
 import type { CheckoutFormData } from '@/features/checkout/schemas/checkout.schema';
 import type { ShippingMethod } from '@/features/shop/stores/shop.store';
 
@@ -40,6 +40,7 @@ export interface CheckoutOrderResponse {
   orderNumber: string;
   status: string;
   paymentMethod: string;
+  paymentStatus?: string | null;
   total: number;
 }
 
@@ -66,6 +67,11 @@ export const checkoutService = {
     api.get<{ success: boolean; data: CheckoutOrderResponse }>(
       `/payments/orders/${orderId}`,
     ),
+
+  abandonOrder: (orderId: string) =>
+    api.post<{ success: boolean; data: CheckoutOrderResponse }>(
+      `/payments/orders/${orderId}/abandon`,
+    ),
 };
 
 export function getCheckoutErrorMessage(error: unknown): string {
@@ -73,6 +79,5 @@ export function getCheckoutErrorMessage(error: unknown): string {
     const response = (error as { response?: { data?: { message?: string } } }).response;
     if (response?.data?.message) return response.data.message;
   }
-  if (error instanceof Error) return error.message;
-  return 'Something went wrong. Please try again.';
+  return getApiErrorMessage(error);
 }

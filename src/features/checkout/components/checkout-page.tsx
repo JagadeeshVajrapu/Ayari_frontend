@@ -1,13 +1,12 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion } from 'framer-motion';
-import { ArrowLeft } from 'lucide-react';
-import { Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useShopStore } from '@/features/shop/stores/shop.store';
 import { calculateCartTotals } from '@/features/cart/lib/cart-calculations';
 import { useCartLineItems } from '@/features/cart/hooks/use-cart-line-items';
@@ -23,16 +22,36 @@ import { CheckoutOrderSummary } from './checkout-order-summary';
 import {
   checkoutService,
   getCheckoutErrorMessage,
+  type CheckoutOrderResponse,
   type CreatePaymentOrderPayload,
+  type VerifyPaymentPayload,
 } from '@/services/checkout.service';
-import { openRazorpayCheckout, isRazorpayConfigured } from '@/features/checkout/lib/razorpay';
+import { openRazorpayCheckout } from '@/features/checkout/lib/razorpay';
 import { Button } from '@/components/ui/button';
+
+function isPaidOrder(order: CheckoutOrderResponse): boolean {
+  return (
+    order.status === 'CONFIRMED' ||
+    order.status === 'PROCESSING' ||
+    order.status === 'SHIPPED' ||
+    order.status === 'DELIVERED' ||
+    order.paymentStatus === 'CAPTURED'
+  );
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export function CheckoutPage() {
   const router = useRouter();
   const { cart, appliedCoupon, shippingMethod, clearCart } = useShopStore();
   const { lineItems, loading: cartLoading } = useCartLineItems(cart);
   const [apiError, setApiError] = useState('');
+  const [verifyingPayment, setVerifyingPayment] = useState(false);
+
+  /** Tracks Razorpay modal lifecycle to avoid ondismiss cancelling a paid order. */
+  const paymentGateRef = useRef<'idle' | 'open' | 'paid' | 'dismissed'>('idle');
 
   const totals = calculateCartTotals(lineItems, shippingMethod, 0);
 
@@ -76,17 +95,75 @@ export function CheckoutPage() {
     couponCode: appliedCoupon?.code,
   });
 
-  const redirectToSuccess = (order: { orderId: string; orderNumber: string }, method: string) => {
+  const redirectToSuccess = (
+    order: { orderId: string; orderNumber: string; status?: string; total?: number },
+    method: string,
+  ) => {
     clearCart();
-    router.push(
-      `/checkout/success?orderId=${encodeURIComponent(order.orderId)}&order=${encodeURIComponent(order.orderNumber)}&method=${encodeURIComponent(method)}`,
-    );
+    const params = new URLSearchParams({
+      orderId: order.orderId,
+      order: order.orderNumber,
+      method,
+      status: order.status ?? 'CONFIRMED',
+    });
+    if (typeof order.total === 'number') {
+      params.set('total', String(order.total));
+    }
+    router.replace(`/checkout/success?${params.toString()}`);
   };
 
   const redirectToFailed = (reason: string, orderId?: string) => {
     const params = new URLSearchParams({ reason });
     if (orderId) params.set('orderId', orderId);
-    router.push(`/checkout/failed?${params.toString()}`);
+    router.replace(`/checkout/failed?${params.toString()}`);
+  };
+
+  const abandonPendingOrder = async (orderId: string) => {
+    try {
+      await checkoutService.abandonOrder(orderId);
+    } catch {
+      // Best-effort
+    }
+  };
+
+  const pollUntilPaid = async (orderId: string): Promise<CheckoutOrderResponse | null> => {
+    for (let i = 0; i < 6; i += 1) {
+      try {
+        const { data } = await checkoutService.getOrder(orderId);
+        if (isPaidOrder(data.data)) return data.data;
+      } catch {
+        // keep polling
+      }
+      await sleep(400);
+    }
+    return null;
+  };
+
+  const verifyWithRetry = async (payload: VerifyPaymentPayload): Promise<CheckoutOrderResponse> => {
+    try {
+      const { data } = await checkoutService.verifyRazorpayPayment(payload);
+      return data.data;
+    } catch (firstError) {
+      // Razorpay ondismiss may have briefly cancelled the order — wait and retry.
+      await sleep(700);
+      try {
+        const { data } = await checkoutService.verifyRazorpayPayment(payload);
+        return data.data;
+      } catch {
+        const paid = await pollUntilPaid(payload.orderId);
+        if (paid) return paid;
+        throw firstError;
+      }
+    }
+  };
+
+  const resolveAfterVerifyError = async (orderId: string) => {
+    const paid = await pollUntilPaid(orderId);
+    if (paid) {
+      redirectToSuccess(paid, 'razorpay');
+      return;
+    }
+    redirectToFailed('verification', orderId);
   };
 
   const onSubmit = async (data: CheckoutFormData) => {
@@ -103,16 +180,34 @@ export function CheckoutPage() {
       const { data: orderResponse } = await checkoutService.createRazorpayOrder(payload);
       const order = orderResponse.data;
 
-      if (order.mock || !isRazorpayConfigured()) {
-        const { data: verifyResponse } = await checkoutService.verifyRazorpayPayment({
-          orderId: order.orderId,
-          razorpayOrderId: order.razorpayOrderId,
-          razorpayPaymentId: `pay_mock_${order.orderId}`,
-          razorpaySignature: 'mock_signature',
-        });
-        redirectToSuccess(verifyResponse.data, 'razorpay-demo');
+      if (order.mock) {
+        setVerifyingPayment(true);
+        try {
+          const verified = await verifyWithRetry({
+            orderId: order.orderId,
+            razorpayOrderId: order.razorpayOrderId,
+            razorpayPaymentId: `pay_mock_${order.orderId}`,
+            razorpaySignature: 'mock_signature',
+          });
+          redirectToSuccess(verified, 'razorpay-demo');
+        } catch (error) {
+          await resolveAfterVerifyError(order.orderId);
+          setApiError(getCheckoutErrorMessage(error));
+        } finally {
+          setVerifyingPayment(false);
+        }
         return;
       }
+
+      if (!order.keyId || !order.razorpayOrderId) {
+        setApiError(
+          'Payment is not configured correctly. Please try Cash on Delivery or contact support.',
+        );
+        void abandonPendingOrder(order.orderId);
+        return;
+      }
+
+      paymentGateRef.current = 'open';
 
       await openRazorpayCheckout({
         key: order.keyId,
@@ -128,22 +223,45 @@ export function CheckoutPage() {
         },
         theme: { color: '#C9A96E' },
         handler: async (response) => {
+          // Mark paid BEFORE anything async — ondismiss often races with handler.
+          paymentGateRef.current = 'paid';
+          setVerifyingPayment(true);
+          setApiError('');
+
           try {
-            const { data: verifyResponse } = await checkoutService.verifyRazorpayPayment({
+            if (
+              !response.razorpay_order_id ||
+              !response.razorpay_payment_id ||
+              !response.razorpay_signature
+            ) {
+              throw new Error('Incomplete payment response from Razorpay');
+            }
+
+            const verified = await verifyWithRetry({
               orderId: order.orderId,
               razorpayOrderId: response.razorpay_order_id,
               razorpayPaymentId: response.razorpay_payment_id,
               razorpaySignature: response.razorpay_signature,
             });
-            redirectToSuccess(verifyResponse.data, 'razorpay');
+            redirectToSuccess(verified, 'razorpay');
           } catch (error) {
-            redirectToFailed('verification', order.orderId);
+            await resolveAfterVerifyError(order.orderId);
             setApiError(getCheckoutErrorMessage(error));
+          } finally {
+            setVerifyingPayment(false);
           }
         },
         modal: {
-          ondismiss: () =>
-            setApiError('Payment was cancelled. You can try again or choose another method.'),
+          ondismiss: () => {
+            // Delay: Razorpay frequently closes the modal (ondismiss) right after success.
+            window.setTimeout(() => {
+              if (paymentGateRef.current === 'paid') return;
+              if (paymentGateRef.current !== 'open') return;
+              paymentGateRef.current = 'dismissed';
+              void abandonPendingOrder(order.orderId);
+              setApiError('Payment was cancelled. You can try again or choose another method.');
+            }, 1200);
+          },
         },
       });
     } catch (error) {
@@ -172,6 +290,16 @@ export function CheckoutPage() {
   return (
     <div className="section-padding pt-8">
       <div className="container-premium">
+        {verifyingPayment && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm">
+            <div className="flex flex-col items-center gap-3 rounded-3xl border border-border/60 bg-surface-elevated px-8 py-6 shadow-soft">
+              <Loader2 className="h-8 w-8 animate-spin text-champagne-dark" />
+              <p className="text-sm font-medium text-foreground">Confirming payment…</p>
+              <p className="text-xs text-ink-muted">Please wait — do not close this page.</p>
+            </div>
+          </div>
+        )}
+
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div>
             <Button variant="ghost" size="sm" className="mb-3 -ml-2" asChild>
@@ -233,7 +361,7 @@ export function CheckoutPage() {
                 lineItems={lineItems}
                 totals={totals}
                 shippingMethod={shippingMethod}
-                isSubmitting={isSubmitting}
+                isSubmitting={isSubmitting || verifyingPayment}
                 paymentMethod={paymentMethod}
               />
             </div>

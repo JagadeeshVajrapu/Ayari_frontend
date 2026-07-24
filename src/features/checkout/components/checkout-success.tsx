@@ -13,32 +13,83 @@ import {
   type CheckoutOrderResponse,
 } from '@/services/checkout.service';
 
+const CONFIRMED_STATUSES = new Set([
+  'CONFIRMED',
+  'PROCESSING',
+  'SHIPPED',
+  'DELIVERED',
+]);
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export function CheckoutSuccessPage() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get('orderId');
   const fallbackOrderNumber = searchParams.get('order') ?? 'AYARI-ORDER';
   const method = searchParams.get('method') ?? 'online';
+  const statusParam = searchParams.get('status');
+  const totalParam = searchParams.get('total');
 
-  const [order, setOrder] = useState<CheckoutOrderResponse | null>(null);
-  const [loading, setLoading] = useState(Boolean(orderId));
+  // Instant UI from redirect params — don't wait on a network round-trip.
+  const [order, setOrder] = useState<CheckoutOrderResponse | null>(() => {
+    if (!orderId) return null;
+    const total = totalParam ? Number(totalParam) : undefined;
+    return {
+      orderId,
+      orderNumber: fallbackOrderNumber,
+      status: statusParam ?? 'CONFIRMED',
+      paymentMethod: method === 'cod' ? 'COD' : 'RAZORPAY',
+      total: Number.isFinite(total) ? (total as number) : 0,
+    };
+  });
+  const [syncing, setSyncing] = useState(Boolean(orderId));
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!orderId) return;
+    if (!orderId) {
+      setSyncing(false);
+      return;
+    }
 
     let cancelled = false;
 
-    checkoutService
-      .getOrder(orderId)
-      .then(({ data }) => {
-        if (!cancelled) setOrder(data.data);
-      })
-      .catch((err) => {
-        if (!cancelled) setError(getCheckoutErrorMessage(err));
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    const syncOrder = async () => {
+      const maxAttempts = 8;
+      for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+        try {
+          const { data } = await checkoutService.getOrder(orderId);
+          if (cancelled) return;
+
+          setOrder(data.data);
+          setError('');
+
+          if (
+            CONFIRMED_STATUSES.has(data.data.status) ||
+            data.data.paymentStatus === 'CAPTURED' ||
+            data.data.status === 'CANCELLED'
+          ) {
+            setSyncing(false);
+            return;
+          }
+        } catch (err) {
+          if (cancelled) return;
+          // Keep showing optimistic status; only surface error after last attempt.
+          if (attempt === maxAttempts - 1) {
+            setError(getCheckoutErrorMessage(err));
+            setSyncing(false);
+            return;
+          }
+        }
+
+        await sleep(350);
+      }
+
+      if (!cancelled) setSyncing(false);
+    };
+
+    void syncOrder();
 
     return () => {
       cancelled = true;
@@ -53,7 +104,7 @@ export function CheckoutSuccessPage() {
     method === 'cod'
       ? 'Cash on Delivery'
       : method === 'razorpay-demo'
-        ? 'Demo Payment (configure Razorpay keys for live payments)'
+        ? 'Mock Payment (local — set Razorpay Test Mode keys for the real checkout modal)'
         : 'Online Payment';
 
   return (
@@ -75,37 +126,33 @@ export function CheckoutSuccessPage() {
         </p>
 
         <div className="mt-8 w-full max-w-sm rounded-3xl border border-border/60 bg-surface-elevated p-6 text-left shadow-soft">
-          {loading ? (
-            <div className="flex items-center justify-center py-6">
-              <Loader2 className="h-6 w-6 animate-spin text-champagne-dark" />
+          <div className="flex items-center gap-3">
+            <Package className="h-5 w-5 text-champagne-dark dark:text-champagne" />
+            <div>
+              <p className="text-xs text-ink-muted">Order Number</p>
+              <p className="font-medium text-foreground">{orderNumber}</p>
             </div>
-          ) : (
-            <>
-              <div className="flex items-center gap-3">
-                <Package className="h-5 w-5 text-champagne-dark dark:text-champagne" />
-                <div>
-                  <p className="text-xs text-ink-muted">Order Number</p>
-                  <p className="font-medium text-foreground">{orderNumber}</p>
-                </div>
-              </div>
-              {total !== undefined && (
-                <p className="mt-4 text-sm text-ink-muted">
-                  Total paid:{' '}
-                  <span className="font-medium text-foreground">{formatPrice(total)}</span>
-                </p>
+          </div>
+          {typeof total === 'number' && total > 0 && (
+            <p className="mt-4 text-sm text-ink-muted">
+              Total paid:{' '}
+              <span className="font-medium text-foreground">{formatPrice(total)}</span>
+            </p>
+          )}
+          <p className="mt-2 text-sm text-ink-muted">
+            Status:{' '}
+            <span className="inline-flex items-center gap-2 text-foreground">
+              {(status ?? 'CONFIRMED').replace(/_/g, ' ')}
+              {syncing && (
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-champagne-dark" aria-label="Updating status" />
               )}
-              {status && (
-                <p className="mt-2 text-sm text-ink-muted">
-                  Status: <span className="text-foreground">{status.replace(/_/g, ' ')}</span>
-                </p>
-              )}
-              <p className="mt-4 text-sm text-ink-muted">
-                Payment: <span className="text-foreground">{methodLabel}</span>
-              </p>
-              {error && (
-                <p className="mt-3 text-xs text-amber-600 dark:text-amber-400">{error}</p>
-              )}
-            </>
+            </span>
+          </p>
+          <p className="mt-4 text-sm text-ink-muted">
+            Payment: <span className="text-foreground">{methodLabel}</span>
+          </p>
+          {error && (
+            <p className="mt-3 text-xs text-amber-600 dark:text-amber-400">{error}</p>
           )}
         </div>
 
@@ -114,7 +161,7 @@ export function CheckoutSuccessPage() {
             <Link href="/shop">Continue Shopping</Link>
           </Button>
           <Button variant="outline" asChild>
-            <Link href="/">Back to Home</Link>
+            <Link href="/account/orders">View Orders</Link>
           </Button>
         </div>
       </div>

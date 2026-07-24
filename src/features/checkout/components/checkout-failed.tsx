@@ -1,21 +1,23 @@
 'use client';
 
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { AlertCircle, ArrowLeft, RefreshCw } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { checkoutService } from '@/services/checkout.service';
 
 const REASON_MESSAGES: Record<string, { title: string; description: string }> = {
   cancelled: {
     title: 'Payment Cancelled',
     description:
-      'You closed the payment window before completing checkout. Your order is saved as pending — you can try again.',
+      'You closed the payment window before completing checkout. No order was placed — you can try again anytime.',
   },
   verification: {
     title: 'Payment Verification Failed',
     description:
-      'We could not verify your payment. If money was deducted, it will be refunded automatically within 5–7 business days.',
+      'We could not confirm your payment yet. If Razorpay showed success, wait a moment and check Orders — your payment may still be confirming.',
   },
   default: {
     title: 'Payment Failed',
@@ -24,12 +26,72 @@ const REASON_MESSAGES: Record<string, { title: string; description: string }> = 
   },
 };
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export function CheckoutFailedPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const reason = searchParams.get('reason') ?? 'default';
   const orderId = searchParams.get('orderId');
+  const [checking, setChecking] = useState(Boolean(orderId));
 
   const content = REASON_MESSAGES[reason] ?? REASON_MESSAGES.default;
+
+  // Recover success races: Razorpay paid but verify finished a moment later.
+  useEffect(() => {
+    if (!orderId) {
+      setChecking(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const recover = async () => {
+      for (let attempt = 0; attempt < 8; attempt += 1) {
+        try {
+          const { data } = await checkoutService.getOrder(orderId);
+          if (cancelled) return;
+          const order = data.data;
+          if (
+            order.status === 'CONFIRMED' ||
+            order.status === 'PROCESSING' ||
+            order.paymentStatus === 'CAPTURED'
+          ) {
+            const params = new URLSearchParams({
+              orderId: order.orderId,
+              order: order.orderNumber,
+              method: 'razorpay',
+              status: order.status,
+              total: String(order.total),
+            });
+            router.replace(`/checkout/success?${params.toString()}`);
+            return;
+          }
+        } catch {
+          // keep trying
+        }
+        await sleep(500);
+      }
+      if (!cancelled) setChecking(false);
+    };
+
+    void recover();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [orderId, router]);
+
+  if (checking) {
+    return (
+      <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3">
+        <Loader2 className="h-8 w-8 animate-spin text-champagne-dark" />
+        <p className="text-sm text-ink-muted">Checking payment status…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="section-padding pt-8">
@@ -46,18 +108,15 @@ export function CheckoutFailedPage() {
         <h1 className="font-display text-display-md text-foreground">{content.title}</h1>
         <p className="mt-3 max-w-md text-ink-muted">{content.description}</p>
 
-        {orderId && (
-          <p className="mt-4 text-xs text-ink-faint">
-            Reference: <span className="font-mono text-ink-muted">{orderId}</span>
-          </p>
-        )}
-
         <div className="mt-10 flex flex-wrap justify-center gap-3">
           <Button variant="champagne" asChild>
             <Link href="/checkout">
               <RefreshCw className="h-4 w-4" />
               Try Again
             </Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/account/orders">View Orders</Link>
           </Button>
           <Button variant="outline" asChild>
             <Link href="/cart">
