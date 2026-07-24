@@ -94,7 +94,8 @@ export function buildCartLineItem(
 
   return {
     product,
-    variantId: variant?.id ?? variantId,
+    // Keep the cart's stored variant id so remove/update still match the bag entry
+    variantId,
     variantName,
     displayName,
     image,

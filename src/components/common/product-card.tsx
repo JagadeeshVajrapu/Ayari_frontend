@@ -111,7 +111,7 @@ export function ProductCard({
               </Badge>
             )}
 
-            <div className="absolute right-4 bottom-4 left-4 flex translate-y-4 gap-2 opacity-100 transition-all duration-500 md:translate-y-4 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100">
+            <div className="absolute right-3 bottom-3 left-3 flex translate-y-0 gap-2 opacity-100 transition-all duration-500 md:translate-y-4 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100">
               <Button
                 type="button"
                 variant="glass"

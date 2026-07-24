@@ -33,6 +33,8 @@ export function useNotifications(options?: { poll?: boolean }) {
         setUnreadCount(data.unreadCount);
         setPage(data.pagination.page);
         setTotalPages(data.pagination.totalPages);
+      } catch {
+        /* Keep prior notifications if backend is briefly unavailable */
       } finally {
         if (mountedRef.current) setLoading(false);
       }

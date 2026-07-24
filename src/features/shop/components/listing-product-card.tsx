@@ -111,14 +111,14 @@ export function ListingProductCard({ product, index, onQuickView }: ListingProdu
           </button>
         </div>
 
-        <div className="absolute right-3 bottom-3 left-3 translate-y-2 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
+        <div className="absolute right-2 bottom-2 left-2 translate-y-0 opacity-100 transition-all duration-300 md:right-3 md:bottom-3 md:left-3 md:translate-y-2 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100">
           <button
             type="button"
             suppressHydrationWarning
             disabled={!product.inStock}
             onClick={handleAddToCart}
             className={cn(
-              'flex w-full items-center justify-center gap-2 rounded-full py-2.5 text-xs font-medium tracking-wider uppercase transition-all',
+              'flex w-full items-center justify-center gap-2 rounded-full py-2 text-[10px] font-medium tracking-wider uppercase transition-all sm:py-2.5 sm:text-xs',
               product.inStock
                 ? 'bg-ink text-cream hover:scale-[1.02]'
                 : 'cursor-not-allowed bg-muted text-ink-faint',

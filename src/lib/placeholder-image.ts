@@ -6,5 +6,5 @@ export function placeholderImage(seed: string, width = 800, height = 1000): stri
 }
 
 /** Fixed URLs — use these in above-the-fold components to avoid hydration drift. */
-export const HERO_IMAGE = placeholderImage('AYARI', 900, 1200);
+export const HERO_IMAGE = '/images/hero-atelier.png';
 export const SEO_DEFAULT_IMAGE = placeholderImage('AYARI', 1200, 630);

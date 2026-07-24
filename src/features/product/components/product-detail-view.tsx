@@ -32,7 +32,7 @@ export function ProductDetailView({
   const variation = useProductVariations(product);
 
   return (
-    <div className="pb-24 lg:pb-16">
+    <div className="pb-40 lg:pb-16">
       <div className="container-premium pt-6">
         <motion.nav
           initial={{ opacity: 0 }}
@@ -48,7 +48,7 @@ export function ProductDetailView({
           </Link>
           <ChevronRight className="h-3 w-3" />
           <Link
-            href={`/shop?categories=${encodeURIComponent(product.categorySlug ?? product.category)}`}
+            href={`/categories/${encodeURIComponent(product.categorySlug ?? product.category)}`}
             className="transition-colors hover:text-foreground"
           >
             {product.category}

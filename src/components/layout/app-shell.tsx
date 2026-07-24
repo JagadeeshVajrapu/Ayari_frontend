@@ -2,8 +2,10 @@
 
 import { usePathname } from 'next/navigation';
 import { Footer } from '@/components/layout/footer';
+import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav';
 import { SiteHeader } from '@/components/layout/site-header';
 import { PageTransition } from '@/components/motion/page-transition';
+import { WelcomeCouponModal } from '@/components/home/welcome-coupon-modal';
 
 const AUTH_PREFIXES = [
   '/login',
@@ -33,10 +35,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <>
       <SiteHeader />
-      <main id="main-content" tabIndex={-1} className="outline-none">
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="outline-none pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-0"
+      >
         <PageTransition>{children}</PageTransition>
       </main>
       <Footer />
+      <MobileBottomNav />
+      <WelcomeCouponModal />
     </>
   );
 }

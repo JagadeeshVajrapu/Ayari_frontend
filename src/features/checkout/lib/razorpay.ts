@@ -74,5 +74,7 @@ export async function openRazorpayCheckout(
 }
 
 export function isRazorpayConfigured(): boolean {
-  return Boolean(process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID);
+  // Only trust the public key when present — live checkout still requires
+  // matching backend RAZORPAY_KEY_ID + RAZORPAY_KEY_SECRET (otherwise mock path).
+  return Boolean(process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID?.trim());
 }

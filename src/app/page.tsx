@@ -1,6 +1,8 @@
 import { Hero } from '@/components/home/hero';
 import { FeaturedCategories } from '@/components/home/featured-categories';
 import { CatalogProductsSection } from '@/components/home/catalog-products-section';
+import { HomeTrustStrip } from '@/components/home/home-trust-strip';
+import { HomeHighlightBands } from '@/components/home/home-highlight-bands';
 import { LazyNewsletter } from '@/components/home/home-lazy-sections';
 import { createPageMetadata } from '@/lib/seo';
 
@@ -15,7 +17,9 @@ export default function HomePage() {
   return (
     <>
       <Hero />
+      <HomeTrustStrip />
       <FeaturedCategories />
+      <HomeHighlightBands />
       <CatalogProductsSection
         eyebrow="Featured"
         title="The Edit"

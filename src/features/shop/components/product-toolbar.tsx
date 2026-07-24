@@ -85,6 +85,7 @@ export function ProductToolbar({
           value={filters.sort}
           onChange={(e) => onSort(e.target.value as ProductFilters['sort'])}
           className="h-9 rounded-full border border-border bg-surface-elevated px-4 text-xs text-foreground focus:border-champagne/50 focus:outline-none focus:ring-2 focus:ring-champagne/20"
+          suppressHydrationWarning
         >
           {SORT_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -104,6 +105,7 @@ export function ProductToolbar({
                 : 'text-ink-muted hover:text-foreground',
             )}
             aria-label="Grid view"
+            suppressHydrationWarning
           >
             <Grid3X3 className="h-4 w-4" />
           </button>
@@ -117,6 +119,7 @@ export function ProductToolbar({
                 : 'text-ink-muted hover:text-foreground',
             )}
             aria-label="List view"
+            suppressHydrationWarning
           >
             <LayoutList className="h-4 w-4" />
           </button>

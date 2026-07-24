@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type FormEvent, type MouseEvent } from 'react';
 import Image from 'next/image';
 import {
   ChevronDown,
@@ -275,6 +275,7 @@ export function AdminCategoriesView() {
   const [editingCategory, setEditingCategory] = useState<AdminCategory | null>(null);
   const [categoryForm, setCategoryForm] = useState({ name: '', description: '' });
   const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState('');
 
   const loadCategories = useCallback(async () => {
     setLoading(true);
@@ -303,35 +304,45 @@ export function AdminCategoriesView() {
   const openCreateCategory = () => {
     setEditingCategory(null);
     setCategoryForm({ name: '', description: '' });
+    setFormError('');
     setShowCategoryForm(true);
   };
 
-  const openEditCategory = (category: AdminCategory) => {
+  const openEditCategory = (category: AdminCategory, event?: MouseEvent) => {
+    event?.preventDefault();
+    event?.stopPropagation();
     setEditingCategory(category);
     setCategoryForm({ name: category.name, description: category.description ?? '' });
+    setFormError('');
     setShowCategoryForm(true);
   };
 
-  const handleSaveCategory = async (e: React.FormEvent) => {
+  const handleSaveCategory = async (e: FormEvent) => {
     e.preventDefault();
+    if (!categoryForm.name.trim()) {
+      setFormError('Category name is required');
+      return;
+    }
     setSaving(true);
+    setFormError('');
     setError('');
     try {
       if (editingCategory) {
         await adminService.updateCategory(editingCategory.id, {
-          name: categoryForm.name,
-          description: categoryForm.description || null,
+          name: categoryForm.name.trim(),
+          description: categoryForm.description.trim() || null,
         });
       } else {
         await adminService.createCategory({
-          name: categoryForm.name,
-          description: categoryForm.description || undefined,
+          name: categoryForm.name.trim(),
+          description: categoryForm.description.trim() || undefined,
         });
       }
       setShowCategoryForm(false);
+      setEditingCategory(null);
       await loadCategories();
     } catch (err) {
-      setError(getApiErrorMessage(err));
+      setFormError(getApiErrorMessage(err));
     } finally {
       setSaving(false);
     }
@@ -456,7 +467,12 @@ export function AdminCategoriesView() {
                         >
                           {category.isActive ? 'Active' : 'Inactive'}
                         </button>
-                        <Button variant="outline" size="sm" onClick={() => openEditCategory(category)}>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={(event) => openEditCategory(category, event)}
+                        >
                           <Edit2 className="h-3.5 w-3.5" />
                           Edit
                         </Button>
@@ -493,20 +509,30 @@ export function AdminCategoriesView() {
       </div>
 
       {showCategoryForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => !saving && setShowCategoryForm(false)}
+        >
           <form
             onSubmit={handleSaveCategory}
+            onClick={(event) => event.stopPropagation()}
             className="w-full max-w-md rounded-2xl border border-border bg-background p-6 shadow-xl"
           >
             <h2 className="font-display text-xl text-foreground">
               {editingCategory ? 'Edit Category' : 'Add Category'}
             </h2>
+            {formError && (
+              <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">
+                {formError}
+              </div>
+            )}
             <div className="mt-4 space-y-3">
               <Input
                 placeholder="Category name"
                 value={categoryForm.name}
                 onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
                 required
+                autoFocus
               />
               <textarea
                 className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground"
@@ -517,7 +543,13 @@ export function AdminCategoriesView() {
               />
             </div>
             <div className="mt-6 flex gap-3">
-              <Button type="button" variant="outline" className="flex-1" onClick={() => setShowCategoryForm(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={() => setShowCategoryForm(false)}
+                disabled={saving}
+              >
                 Cancel
               </Button>
               <Button type="submit" variant="default" className="flex-1" disabled={saving}>

@@ -3,6 +3,7 @@ import { ArrowLeft } from 'lucide-react';
 import { CategoryCard } from '@/components/common/category-card';
 import { Button } from '@/components/ui/button';
 import { CATEGORY_PLACEHOLDER } from '@/lib/catalog-constants';
+import { categoryHref } from '@/lib/category-routes';
 import { resolveMediaUrl } from '@/lib/media';
 import { createPageMetadata } from '@/lib/seo';
 import { fetchCategories } from '@/lib/server-catalog';
@@ -34,7 +35,7 @@ export default async function CategoriesPage() {
           </p>
           <h1 className="mt-2 font-display text-display-md text-foreground">All Categories</h1>
           <p className="mt-3 text-sm leading-relaxed text-ink-muted sm:text-base">
-            Choose a category to see every available product in that collection.
+            Choose a category to open its collection page — products, details, and easy add-to-bag.
           </p>
         </div>
 
@@ -48,7 +49,7 @@ export default async function CategoriesPage() {
                   category.productCount === 1 ? 'product' : 'products'
                 }`}
                 image={resolveMediaUrl(category.imageUrl, CATEGORY_PLACEHOLDER)}
-                href={`/shop?categories=${encodeURIComponent(category.slug)}`}
+                href={categoryHref(category.slug)}
                 index={index}
               />
             ))}

@@ -51,7 +51,7 @@ export function CompareBar() {
         initial={{ y: 100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 100, opacity: 0 }}
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/95 p-4 shadow-premium backdrop-blur-md"
+        className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 border-t border-border/60 bg-background/95 p-3 shadow-premium backdrop-blur-md lg:bottom-0 lg:p-4"
       >
         <div className="container-premium flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2 text-sm font-medium text-foreground">

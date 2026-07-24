@@ -13,6 +13,7 @@ import {
   Settings,
   LogOut,
   LayoutDashboard,
+  Shield,
 } from 'lucide-react';
 import { useAuthStore } from '@/features/auth/stores/auth.store';
 import { cn } from '@/lib/utils';
@@ -37,6 +38,7 @@ export function AccountSidebar({ onNavigate, className }: AccountSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuthStore();
+  const isAdmin = user?.role === 'ADMIN';
 
   const handleLogout = async () => {
     await logout();
@@ -87,6 +89,17 @@ export function AccountSidebar({ onNavigate, className }: AccountSidebarProps) {
             </Link>
           );
         })}
+
+        {isAdmin && (
+          <Link
+            href="/admin"
+            onClick={onNavigate}
+            className="mt-2 flex items-center gap-3 rounded-2xl border border-border/60 px-3 py-2.5 text-sm text-ink-muted transition-all duration-300 hover:bg-muted hover:text-foreground"
+          >
+            <Shield className="h-4 w-4 shrink-0" />
+            Admin Panel
+          </Link>
+        )}
       </nav>
 
       <button

@@ -6,6 +6,7 @@ import { ScrollReveal } from '@/components/common/scroll-reveal';
 import { Button } from '@/components/ui/button';
 import { fetchCategories } from '@/lib/server-catalog';
 import { CATEGORY_PLACEHOLDER } from '@/lib/catalog-constants';
+import { categoryHref } from '@/lib/category-routes';
 import { resolveMediaUrl } from '@/lib/media';
 
 export async function FeaturedCategories() {
@@ -20,9 +21,9 @@ export async function FeaturedCategories() {
       <div className="container-premium">
         <div className="flex flex-col items-start justify-between gap-8 md:flex-row md:items-end">
           <SectionHeading
-            eyebrow="Shop"
-            title="Categories"
-            description="Browse collections you create in the admin panel."
+            eyebrow="Shop by category"
+            title="Browse every collection"
+            description="Tap a category to open its dedicated page with products ready to buy."
           />
           <ScrollReveal delay={0.2}>
             <div className="flex flex-wrap gap-3">
@@ -42,8 +43,20 @@ export async function FeaturedCategories() {
           </ScrollReveal>
         </div>
 
-        <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {categories.slice(0, 4).map((category, index) => {
+        <div className="mt-8 flex gap-2 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] sm:mt-10 sm:flex-wrap sm:overflow-visible [&::-webkit-scrollbar]:hidden">
+          {categories.map((category) => (
+            <Link
+              key={`chip-${category.id}`}
+              href={categoryHref(category.slug)}
+              className="shrink-0 snap-start rounded-full border border-border/70 bg-background px-3.5 py-2 text-xs text-foreground transition-colors hover:border-brand/50 hover:text-brand sm:px-4 sm:text-sm"
+            >
+              {category.name}
+            </Link>
+          ))}
+        </div>
+
+        <div className="mt-6 grid gap-4 sm:mt-8 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
+          {categories.map((category, index) => {
             const image = resolveMediaUrl(category.imageUrl, CATEGORY_PLACEHOLDER);
             return (
               <CategoryCard
@@ -51,7 +64,7 @@ export async function FeaturedCategories() {
                 title={category.name}
                 subtitle={`${category.productCount} ${category.productCount === 1 ? 'product' : 'products'}`}
                 image={image}
-                href={`/shop?categories=${encodeURIComponent(category.slug)}`}
+                href={categoryHref(category.slug)}
                 index={index}
               />
             );

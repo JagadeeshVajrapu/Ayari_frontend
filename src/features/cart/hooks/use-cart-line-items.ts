@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { catalogService } from '@/services/catalog.service';
 import { mapApiProductToListing } from '@/lib/catalog-mappers';
 import { buildCartLineItem, type CartLineItem } from '@/features/cart/lib/cart-calculations';
@@ -10,6 +10,14 @@ export function useCartLineItems(cart: CartItemRef[]) {
   const [lineItems, setLineItems] = useState<CartLineItem[]>([]);
   const [loading, setLoading] = useState(cart.length > 0);
   const [error, setError] = useState('');
+
+  const cartSignature = useMemo(
+    () =>
+      cart
+        .map((item) => `${item.productId}::${item.variantId ?? ''}::${item.quantity}`)
+        .join('|'),
+    [cart],
+  );
 
   useEffect(() => {
     if (cart.length === 0) {
@@ -52,7 +60,9 @@ export function useCartLineItems(cart: CartItemRef[]) {
     return () => {
       cancelled = true;
     };
-  }, [cart]);
+    // cartSignature tracks product/variant/qty changes reliably
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartSignature]);
 
   return { lineItems, loading, error };
 }

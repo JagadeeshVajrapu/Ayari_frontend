@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { ListingProduct } from '@/types/product.types';
-import { matchCartItem } from '@/features/shop/lib/cart-keys';
+import { matchCartItem, matchCartItemForRemove } from '@/features/shop/lib/cart-keys';
 
 const MAX_COMPARE = 4;
 
@@ -87,15 +87,33 @@ export const useShopStore = create<ShopState>()(
         }),
 
       removeFromCart: (productId, variantId) =>
-        set((state) => ({
-          cart: state.cart.filter((item) => !matchCartItem(item, productId, variantId)),
-        })),
+        set((state) => {
+          const next = state.cart.filter(
+            (item) => !matchCartItemForRemove(item, productId, variantId),
+          );
+          if (next.length === state.cart.length) {
+            return { cart: state.cart.filter((item) => item.productId !== productId) };
+          }
+          return { cart: next };
+        }),
 
       updateCartQuantity: (productId, quantity, variantId) =>
         set((state) => {
           if (quantity < 1) {
             return {
-              cart: state.cart.filter((item) => !matchCartItem(item, productId, variantId)),
+              cart: state.cart.filter(
+                (item) => !matchCartItemForRemove(item, productId, variantId),
+              ),
+            };
+          }
+          const hasMatch = state.cart.some((item) => matchCartItem(item, productId, variantId));
+          if (!hasMatch) {
+            return {
+              cart: state.cart.map((item) =>
+                matchCartItemForRemove(item, productId, variantId)
+                  ? { ...item, quantity }
+                  : item,
+              ),
             };
           }
           return {
@@ -109,7 +127,7 @@ export const useShopStore = create<ShopState>()(
         const { wishlist, cart } = get();
         set({
           wishlist: wishlist.includes(productId) ? wishlist : [...wishlist, productId],
-          cart: cart.filter((item) => !matchCartItem(item, productId, variantId)),
+          cart: cart.filter((item) => !matchCartItemForRemove(item, productId, variantId)),
         });
       },
 

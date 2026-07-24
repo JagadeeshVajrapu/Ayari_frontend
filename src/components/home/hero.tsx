@@ -18,7 +18,7 @@ function HeroImage() {
       {ready ? (
         <Image
           src={HERO_IMAGE}
-          alt="Premium fashion editorial showcasing luxury apparel"
+          alt="Handcrafted Ayari décor — mandala plate, candles, and artisan gifts"
           fill
           priority
           quality={75}
@@ -39,13 +39,13 @@ export function Hero() {
   const opacity = useTransform(scrollY, [0, 400], [1, 0]);
 
   return (
-    <section className="relative min-h-[100svh] overflow-hidden bg-gradient-hero dark:bg-gradient-hero-dark">
+    <section className="relative min-h-[100svh] overflow-hidden bg-gradient-hero dark:bg-gradient-hero-dark md:min-h-[100svh]">
       <motion.div style={{ y, opacity }} className="absolute inset-0">
         <div className="absolute top-1/4 -right-1/4 h-[600px] w-[600px] rounded-full bg-champagne/10 blur-3xl" />
         <div className="absolute bottom-0 -left-1/4 h-[500px] w-[500px] rounded-full bg-champagne-light/15 blur-3xl" />
       </motion.div>
 
-      <div className="container-premium relative flex min-h-[100svh] flex-col justify-center pb-20">
+      <div className="container-premium relative flex min-h-[100svh] flex-col justify-center py-16 pb-24 md:pb-20">
         <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
           <div className="max-w-xl">
             <motion.div
@@ -86,13 +86,13 @@ export function Hero() {
               className="mt-10 flex flex-wrap gap-4"
             >
               <Button variant="default" size="lg" asChild>
-                <Link href="/collections/new">
-                  Explore Collection
+                <Link href="/shop">
+                  Shop Collection
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
               <Button variant="outline" size="lg" asChild>
-                <Link href="/editorial">View Lookbook</Link>
+                <Link href="/categories">Browse Categories</Link>
               </Button>
             </motion.div>
 
@@ -100,7 +100,7 @@ export function Hero() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.8, delay: 1 }}
-              className="mt-16 flex gap-10 border-t border-border/60 pt-8"
+              className="mt-10 flex gap-6 border-t border-border/60 pt-6 sm:mt-16 sm:gap-10 sm:pt-8"
             >
               {[
                 { value: '200+', label: 'Curated Pieces' },
@@ -108,8 +108,8 @@ export function Hero() {
                 { value: '4.9', label: 'Rating' },
               ].map((stat) => (
                 <div key={stat.label}>
-                  <p className="font-display text-2xl text-ink">{stat.value}</p>
-                  <p className="mt-1 text-xs tracking-wider text-ink-faint uppercase">
+                  <p className="font-display text-xl text-ink sm:text-2xl">{stat.value}</p>
+                  <p className="mt-1 text-[10px] tracking-wider text-ink-faint uppercase sm:text-xs">
                     {stat.label}
                   </p>
                 </div>
@@ -124,24 +124,6 @@ export function Hero() {
             className="relative mx-auto w-full max-w-lg lg:max-w-none"
           >
             <HeroImage />
-
-            <motion.div
-              animate={{ y: [0, -12, 0] }}
-              transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
-              className="absolute -bottom-6 -left-6 hidden rounded-3xl glass p-5 shadow-glass md:block"
-            >
-              <p className="text-xs tracking-wider text-ink-faint uppercase">Featured</p>
-              <p className="mt-1 font-display text-lg text-ink">Silk Collection</p>
-              <p className="text-sm text-champagne-dark">From ₹12,999</p>
-            </motion.div>
-
-            <motion.div
-              animate={{ y: [0, 10, 0] }}
-              transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-              className="absolute -top-4 -right-4 hidden rounded-full bg-white px-5 py-3 shadow-premium md:block dark:bg-white/95"
-            >
-              <p className="text-xs font-semibold tracking-wider text-brand uppercase">New Season</p>
-            </motion.div>
           </motion.div>
         </div>
       </div>
@@ -150,7 +132,7 @@ export function Hero() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1.5, duration: 1 }}
-        className="absolute bottom-8 left-1/2 -translate-x-1/2"
+        className="absolute bottom-20 left-1/2 hidden -translate-x-1/2 md:bottom-8 md:block"
       >
         <div className="flex flex-col items-center gap-2">
           <span className="text-xs tracking-[0.3em] text-ink-faint uppercase">Scroll</span>

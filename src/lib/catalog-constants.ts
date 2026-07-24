@@ -1,4 +1,5 @@
-export const PRICE_RANGE = { min: 0, max: 500000 };
+/** Storefront price filter bounds (INR). Step controls live in PriceRangeSlider. */
+export const PRICE_RANGE = { min: 0, max: 50000 };
 
 export const PRODUCT_PLACEHOLDER =
   'https://placehold.co/800x1000/e8e4df/4a4a4a/png?text=AYARI&font=playfair-display';

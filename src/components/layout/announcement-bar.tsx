@@ -6,9 +6,9 @@ import { X } from 'lucide-react';
 import { useState } from 'react';
 
 const messages = [
-  'Complimentary shipping on orders over ₹5,000',
-  'New Spring Collection — Shop Now',
-  'Members get early access to Flash Sales',
+  { text: 'Complimentary shipping on orders over ₹5,000', href: '/shipping' },
+  { text: 'New arrivals just dropped — Shop Now', href: '/shop?sort=newest' },
+  { text: 'Welcome offer: use AYARI10 for 10% off', href: '/shop' },
 ];
 
 export function AnnouncementBar() {
@@ -34,13 +34,13 @@ export function AnnouncementBar() {
           className="text-center text-[11px] font-medium tracking-[0.15em] uppercase sm:text-xs"
         >
           <Link
-            href="/collections/new"
+            href={messages[messageIndex].href}
             className="transition-colors hover:text-champagne"
             onMouseEnter={() =>
               setMessageIndex((prev) => (prev + 1) % messages.length)
             }
           >
-            {messages[messageIndex]}
+            {messages[messageIndex].text}
           </Link>
         </motion.p>
 

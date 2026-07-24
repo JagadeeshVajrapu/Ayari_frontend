@@ -150,14 +150,13 @@ export function NotificationBell() {
         <AnimatePresence>
           {unreadCount > 0 && (
             <motion.span
-              key={unreadCount}
+              key="unread-dot"
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0 }}
-              className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-white"
-            >
-              {unreadCount > 9 ? '9+' : unreadCount}
-            </motion.span>
+              className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-brand ring-2 ring-background"
+              aria-hidden
+            />
           )}
         </AnimatePresence>
       </Button>

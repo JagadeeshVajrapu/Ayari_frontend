@@ -89,7 +89,7 @@ export function OrderSummary({ totals, shippingMethod }: OrderSummaryProps) {
         </div>
       </div>
 
-      <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }} className="mt-6">
+      <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }} className="mt-6 hidden lg:block">
         <Button variant="champagne" size="xl" className="group w-full" asChild>
           <Link href="/checkout">
             <Lock className="h-4 w-4" />
@@ -99,13 +99,33 @@ export function OrderSummary({ totals, shippingMethod }: OrderSummaryProps) {
         </Button>
       </motion.div>
 
-      <p className="mt-3 text-center text-[10px] text-ink-faint">
+      <p className="mt-3 hidden text-center text-[10px] text-ink-faint lg:block">
         Secure checkout · SSL encrypted
       </p>
 
-      <Button variant="ghost" className="mt-3 w-full" asChild>
+      <Button variant="ghost" className="mt-3 hidden w-full lg:flex" asChild>
         <Link href="/shop">Continue Shopping</Link>
       </Button>
     </motion.div>
+  );
+}
+
+/** Fixed checkout CTA for phones — sits above the mobile bottom nav. */
+export function MobileCartCheckoutBar({ total }: { total: number }) {
+  return (
+    <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 border-t border-border/70 bg-cream/95 p-3 shadow-premium backdrop-blur-xl lg:hidden dark:bg-background/95">
+      <div className="mx-auto flex max-w-lg items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] tracking-wider text-ink-faint uppercase">Total</p>
+          <p className="truncate font-display text-xl text-foreground">{formatPrice(total)}</p>
+        </div>
+        <Button variant="champagne" size="lg" className="shrink-0" asChild>
+          <Link href="/checkout">
+            <Lock className="h-4 w-4" />
+            Checkout
+          </Link>
+        </Button>
+      </div>
+    </div>
   );
 }

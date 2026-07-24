@@ -74,6 +74,18 @@ export async function fetchCategories(): Promise<ApiCategory[]> {
   return data.categories;
 }
 
+export async function fetchCategoryBySlug(slug: string): Promise<ApiCategory | null> {
+  const categories = await fetchCategories().catch(() => []);
+  const normalized = decodeURIComponent(slug).toLowerCase();
+  return (
+    categories.find(
+      (category) =>
+        category.slug.toLowerCase() === normalized ||
+        category.name.toLowerCase() === normalized,
+    ) ?? null
+  );
+}
+
 export async function fetchAllProductSlugs(): Promise<string[]> {
   const data = await fetchProducts({ page: 1, limit: 500 });
   return data.items.map((product) => product.slug);

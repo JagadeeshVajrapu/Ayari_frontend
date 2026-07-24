@@ -59,11 +59,11 @@ export function BrandLogo({
       height={dim.height}
       priority={priority}
       className={cn(
-        'block h-auto w-auto max-w-none object-contain object-left',
+        'block object-contain object-left',
         'drop-shadow-[0_1px_2px_rgba(0,0,0,0.08)] dark:drop-shadow-[0_2px_10px_rgba(0,0,0,0.35)]',
         className,
       )}
-      style={{ height: dim.height, width: 'auto', minWidth: dim.width * 0.6 }}
+      style={{ width: 'auto', height: dim.height }}
     />
   );
 

@@ -4,33 +4,38 @@ import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, Search, ShoppingBag, User, X } from 'lucide-react';
+import { Heart, Menu, Search, ShoppingBag, User, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { BrandLogo } from '@/components/brand/brand-logo';
+import { CategoriesDropdown } from '@/components/layout/categories-dropdown';
 import { useShopStore } from '@/features/shop/stores/shop.store';
 import { useAuthStore } from '@/features/auth/stores/auth.store';
 import { ThemeToggle } from '@/features/auth/components/theme-toggle';
 import { NotificationBell } from '@/features/notifications/components/notification-bell';
 import { useClientReady } from '@/hooks/use-client-ready';
 import { navItemVariants, springTransition } from '@/lib/motion';
+import { HEADER_DEPARTMENT_LINKS } from '@/lib/header-nav';
 import { cn } from '@/lib/utils';
 
-const navLinks = [
-  { label: 'Shop', href: '/shop' },
-  { label: 'Featured', href: '/shop?featured=true' },
-  { label: 'New Arrivals', href: '/shop?sort=newest' },
-];
+const departmentLinks = HEADER_DEPARTMENT_LINKS;
 
 function NavLink({ href, label, index }: { href: string; label: string; index: number }) {
   const pathname = usePathname();
-  const isActive = pathname === href || (href !== '/' && pathname.startsWith(href.split('?')[0]));
+  const pathOnly = href.split('?')[0];
+  const isActive = pathname === pathOnly && !href.includes('?') ? pathname === href : false;
 
   return (
-    <motion.li custom={index} variants={navItemVariants} initial="hidden" animate="visible">
+    <motion.li
+      custom={index}
+      variants={navItemVariants}
+      initial="hidden"
+      animate="visible"
+      className="shrink-0"
+    >
       <Link
         href={href}
-        className="group relative text-sm text-ink-muted transition-colors duration-300 hover:text-ink"
+        className="group relative whitespace-nowrap text-sm text-ink-muted transition-colors duration-300 hover:text-ink"
       >
         {label}
         <motion.span
@@ -57,7 +62,6 @@ export function Header() {
   const displayCartCount = isReady ? cartCount : 0;
   const displayUser = isReady ? user : null;
   const accountHref = displayUser ? '/account' : '/login';
-  const isAdmin = displayUser?.role === 'ADMIN';
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -88,7 +92,9 @@ export function Header() {
         transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
         className={cn(
           'sticky top-0 z-50 transition-all duration-500',
-          isScrolled ? 'bg-cream/85 py-1.5 shadow-soft backdrop-blur-xl dark:bg-background/85' : 'bg-transparent py-2',
+          isScrolled
+            ? 'bg-cream/85 py-1.5 shadow-soft backdrop-blur-xl dark:bg-background/85'
+            : 'bg-transparent py-2',
         )}
       >
         <div className="container-premium">
@@ -105,14 +111,27 @@ export function Header() {
             </motion.div>
 
             <ul className="hidden items-center gap-8 lg:flex">
-              {navLinks.map((link, index) => (
-                <NavLink key={link.href} href={link.href} label={link.label} index={index} />
+              <motion.li
+                custom={0}
+                variants={navItemVariants}
+                initial="hidden"
+                animate="visible"
+                className="shrink-0"
+              >
+                <CategoriesDropdown />
+              </motion.li>
+              {departmentLinks.map((link, index) => (
+                <NavLink key={link.label} href={link.href} label={link.label} index={index + 1} />
               ))}
             </ul>
 
-            <div className="flex items-center gap-1 md:gap-2">
-              <ThemeToggle />
-              <NotificationBell />
+            <div className="flex items-center gap-0.5 sm:gap-1 md:gap-2">
+              <div className="hidden sm:block">
+                <ThemeToggle />
+              </div>
+              <div className="hidden sm:block">
+                <NotificationBell />
+              </div>
               <motion.div whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }}>
                 <Button
                   variant="ghost"
@@ -124,16 +143,22 @@ export function Header() {
                   <Search className="h-5 w-5" />
                 </Button>
               </motion.div>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Wishlist"
+                className="hidden sm:flex"
+                asChild
+              >
+                <Link href={displayUser ? '/account/wishlist' : '/login?redirect=/account/wishlist'}>
+                  <Heart className="h-5 w-5" />
+                </Link>
+              </Button>
               <Button variant="ghost" size="icon" aria-label="Account" className="hidden sm:flex" asChild>
                 <Link href={accountHref}>
                   <User className="h-5 w-5" />
                 </Link>
               </Button>
-              {isAdmin && (
-                <Button variant="ghost" size="sm" className="hidden text-xs tracking-wider uppercase md:flex" asChild>
-                  <Link href="/admin">Admin</Link>
-                </Button>
-              )}
               <Button variant="ghost" size="icon" aria-label="Cart" className="relative" asChild>
                 <Link href="/cart">
                   <ShoppingBag className="h-5 w-5" />
@@ -206,7 +231,7 @@ export function Header() {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="absolute inset-y-0 right-0 w-full max-w-sm bg-cream p-8 shadow-premium"
+              className="absolute inset-y-0 right-0 w-full max-w-sm overflow-y-auto bg-cream p-8 shadow-premium dark:bg-background"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between">
@@ -216,7 +241,7 @@ export function Header() {
                 </Button>
               </div>
 
-              <nav className="mt-12 flex flex-col gap-6">
+              <nav className="mt-10 flex flex-col gap-6">
                 <form onSubmit={submitSearch} className="flex gap-2">
                   <Input
                     value={searchQuery}
@@ -228,36 +253,61 @@ export function Header() {
                     <Search className="h-4 w-4" />
                   </Button>
                 </form>
-                {navLinks.map((link, i) => (
-                  <motion.div
-                    key={link.href}
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                  >
-                    <Link
-                      href={link.href}
-                      className="font-display text-2xl text-ink"
-                      onClick={() => setIsMobileOpen(false)}
+
+                <Link
+                  href="/shop"
+                  className="font-display text-2xl text-ink"
+                  onClick={() => setIsMobileOpen(false)}
+                >
+                  Shop All
+                </Link>
+                <Link
+                  href="/shop?sort=newest"
+                  className="font-display text-2xl text-ink"
+                  onClick={() => setIsMobileOpen(false)}
+                >
+                  New Arrivals
+                </Link>
+                <Link
+                  href={displayUser ? '/account/wishlist' : '/login?redirect=/account/wishlist'}
+                  className="font-display text-2xl text-ink"
+                  onClick={() => setIsMobileOpen(false)}
+                >
+                  Wishlist
+                </Link>
+
+                <CategoriesDropdown mobile onNavigate={() => setIsMobileOpen(false)} />
+
+                <div className="space-y-3 border-t border-border/60 pt-4">
+                  <p className="text-xs font-semibold tracking-[0.18em] text-ink-faint uppercase">
+                    Departments
+                  </p>
+                  {departmentLinks.map((link, i) => (
+                    <motion.div
+                      key={link.label}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.04 }}
                     >
-                      {link.label}
-                    </Link>
-                  </motion.div>
-                ))}
+                      <Link
+                        href={link.href}
+                        className="block text-lg text-ink"
+                        onClick={() => setIsMobileOpen(false)}
+                      >
+                        {link.label}
+                      </Link>
+                    </motion.div>
+                  ))}
+                </div>
+
                 {displayUser && (
-                  <motion.div
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: navLinks.length * 0.05 }}
+                  <Link
+                    href="/account"
+                    className="font-display text-2xl text-ink"
+                    onClick={() => setIsMobileOpen(false)}
                   >
-                    <Link
-                      href="/account"
-                      className="font-display text-2xl text-ink"
-                      onClick={() => setIsMobileOpen(false)}
-                    >
-                      My Account
-                    </Link>
-                  </motion.div>
+                    My Account
+                  </Link>
                 )}
               </nav>
 

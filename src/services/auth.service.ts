@@ -37,11 +37,16 @@ function writeStoredAccessToken(accessToken: string): void {
 
 type RetriableConfig = InternalAxiosRequestConfig & { _retry?: boolean };
 
+type RefreshResult =
+  | { status: 'ok'; accessToken: string }
+  | { status: 'unauthorized' }
+  | { status: 'unavailable' };
+
 let requestInterceptorId: number | null = null;
 let responseInterceptorId: number | null = null;
-let refreshPromise: Promise<string | null> | null = null;
+let refreshPromise: Promise<RefreshResult> | null = null;
 
-async function refreshAccessToken(): Promise<string | null> {
+async function refreshAccessToken(): Promise<RefreshResult> {
   try {
     const { data } = await axios.post<{
       success: boolean;
@@ -62,10 +67,18 @@ async function refreshAccessToken(): Promise<string | null> {
           setSession(user, token);
         }
       });
+      return { status: 'ok', accessToken: token };
     }
-    return token;
-  } catch {
-    return null;
+    return { status: 'unauthorized' };
+  } catch (error) {
+    // Keep the user signed in when the API is briefly unreachable.
+    if (axios.isAxiosError(error) && !error.response) {
+      return { status: 'unavailable' };
+    }
+    if (axios.isAxiosError(error) && (error.response?.status ?? 0) >= 500) {
+      return { status: 'unavailable' };
+    }
+    return { status: 'unauthorized' };
   }
 }
 
@@ -110,12 +123,14 @@ export function setupAuthInterceptor(): void {
         });
       }
 
-      const newToken = await refreshPromise;
-      if (!newToken) {
+      const refreshResult = await refreshPromise;
+      if (refreshResult.status !== 'ok') {
+        // Keep the local session; only explicit logout clears it.
+        // Network/5xx or expired refresh should not force sign-out mid-session.
         return Promise.reject(error);
       }
 
-      original.headers.Authorization = `Bearer ${newToken}`;
+      original.headers.Authorization = `Bearer ${refreshResult.accessToken}`;
       return api(original);
     },
   );
@@ -175,7 +190,7 @@ export function getApiErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
     if (!error.response) {
       if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
-        return 'Cannot reach the API server. Make sure the backend is running on localhost:5000.';
+        return 'Cannot reach the server right now. Please try again in a moment.';
       }
       return 'Network error. Please check your connection and try again.';
     }
@@ -186,6 +201,10 @@ export function getApiErrorMessage(error: unknown): string {
 
     if (data?.errors?.length) {
       return data.errors.map((entry) => entry.message).join('. ');
+    }
+
+    if (error.response.status >= 500) {
+      return data?.message || 'Something went wrong on our side. Please try again.';
     }
 
     return data?.message ?? 'Something went wrong. Please try again.';

@@ -35,7 +35,7 @@ export function StickyBuyBox({ product, variation }: StickyBuyBoxProps) {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
             transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-            className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/90 p-4 shadow-premium backdrop-blur-xl lg:hidden"
+            className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 border-t border-border/60 bg-background/95 p-3 pb-3 shadow-premium backdrop-blur-xl lg:bottom-0 lg:hidden"
           >
             <ProductBuyBox product={product} variation={variation} compact />
           </motion.div>

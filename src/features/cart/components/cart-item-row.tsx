@@ -1,12 +1,12 @@
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Minus, Plus, Trash2, Heart } from 'lucide-react';
 import { formatPrice, useShopStore } from '@/features/shop/stores/shop.store';
 import type { CartLineItem } from '@/features/cart/lib/cart-calculations';
 import { cn } from '@/lib/utils';
+import { SafeImage } from '@/components/ui/safe-image';
 
 interface CartItemRowProps {
   item: CartLineItem;
@@ -31,7 +31,7 @@ export function CartItemRow({ item, index }: CartItemRowProps) {
         href={`/products/${product.slug}`}
         className="relative h-28 w-24 shrink-0 overflow-hidden rounded-2xl sm:h-32 sm:w-28"
       >
-        <Image src={image} alt={displayName} fill className="object-cover" sizes="112px" />
+        <SafeImage src={image} alt={displayName} fill className="object-cover" sizes="112px" />
       </Link>
 
       <div className="flex min-w-0 flex-1 flex-col justify-between">

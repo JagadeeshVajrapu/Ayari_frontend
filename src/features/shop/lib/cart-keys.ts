@@ -20,3 +20,17 @@ export function matchCartItem(
 ): boolean {
   return item.productId === productId && (item.variantId ?? undefined) === (variantId ?? undefined);
 }
+
+/** Looser match for remove — handles default-variant id vs missing stored variantId. */
+export function matchCartItemForRemove(
+  item: CartItemRef,
+  productId: string,
+  variantId?: string,
+): boolean {
+  if (item.productId !== productId) return false;
+  const stored = item.variantId || undefined;
+  const target = variantId || undefined;
+  if (stored === target) return true;
+  if (!stored || !target) return true;
+  return false;
+}

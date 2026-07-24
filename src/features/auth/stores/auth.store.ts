@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import axios from 'axios';
 import type { AuthUser } from '@/services/auth.service';
 import { authService } from '@/services/auth.service';
 
@@ -41,11 +40,9 @@ export const useAuthStore = create<AuthState>()(
         try {
           const { data } = await authService.getMe();
           set({ user: data.data.user });
-        } catch (error) {
-          // Only clear session on definitive auth failure — not network/server blips
-          if (axios.isAxiosError(error) && error.response?.status === 401) {
-            set({ user: null, accessToken: null });
-          }
+        } catch {
+          // Never auto-logout here. Network blips, backend restarts, or expired
+          // tokens must not clear the session — only explicit logout does.
         }
       },
 
