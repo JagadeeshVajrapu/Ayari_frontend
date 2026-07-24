@@ -1,32 +1,56 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Package, Heart, MapPin, Bell, ArrowRight } from 'lucide-react';
+import { Package, Heart, MapPin, Bell, ArrowRight, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/features/auth/stores/auth.store';
-import { useShopStore } from '@/features/shop/stores/shop.store';
-import { formatPrice } from '@/features/shop/stores/shop.store';
-import { MOCK_ORDERS, MOCK_NOTIFICATIONS } from '@/features/account/lib/account-data';
+import { useShopStore, formatPrice } from '@/features/shop/stores/shop.store';
+import { userService, type AdminOrder } from '@/services/admin.service';
+import { notificationApi } from '@/services/notification.service';
 import { AccountShell } from './account-shell';
 import { Button } from '@/components/ui/button';
-
-const QUICK_LINKS = [
-  { label: 'Orders', href: '/account/orders', icon: Package, count: MOCK_ORDERS.length },
-  { label: 'Wishlist', href: '/account/wishlist', icon: Heart, countKey: 'wishlist' as const },
-  { label: 'Addresses', href: '/account/addresses', icon: MapPin, count: 2 },
-  {
-    label: 'Notifications',
-    href: '/account/notifications',
-    icon: Bell,
-    count: MOCK_NOTIFICATIONS.filter((n) => !n.read).length,
-  },
-];
 
 export function AccountOverview() {
   const user = useAuthStore((s) => s.user);
   const wishlistCount = useShopStore((s) => s.wishlist.length);
-  const recentOrder = MOCK_ORDERS[0];
-  const unread = MOCK_NOTIFICATIONS.filter((n) => !n.read).length;
+  const [orders, setOrders] = useState<AdminOrder[]>([]);
+  const [addressCount, setAddressCount] = useState(0);
+  const [unread, setUnread] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        const [ordersRes, addressesRes, unreadCount] = await Promise.all([
+          userService.getMyOrders({ limit: 5 }),
+          userService.getMyAddresses(),
+          notificationApi.getUnreadCount().catch(() => 0),
+        ]);
+        if (cancelled) return;
+        setOrders(ordersRes.data.data.items);
+        setAddressCount(addressesRes.data.data.addresses.length);
+        setUnread(unreadCount);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const recentOrder = orders[0];
+  const quickLinks = [
+    { label: 'Orders', href: '/account/orders', icon: Package, count: orders.length },
+    { label: 'Wishlist', href: '/account/wishlist', icon: Heart, count: wishlistCount },
+    { label: 'Addresses', href: '/account/addresses', icon: MapPin, count: addressCount },
+    { label: 'Notifications', href: '/account/notifications', icon: Bell, count: unread },
+  ];
 
   return (
     <AccountShell
@@ -55,37 +79,41 @@ export function AccountOverview() {
           )}
         </motion.div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          {QUICK_LINKS.map((link, i) => {
-            const Icon = link.icon;
-            const count = link.countKey === 'wishlist' ? wishlistCount : link.count;
-
-            return (
-              <motion.div
-                key={link.href}
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-              >
-                <Link
-                  href={link.href}
-                  className="group flex items-center gap-4 rounded-3xl border border-border/60 bg-surface-elevated p-5 shadow-soft transition-all hover:border-champagne/40 hover:shadow-medium"
+        {loading ? (
+          <div className="flex justify-center py-10">
+            <Loader2 className="h-7 w-7 animate-spin text-champagne" />
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {quickLinks.map((link, i) => {
+              const Icon = link.icon;
+              return (
+                <motion.div
+                  key={link.href}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05 }}
                 >
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-champagne/15">
-                    <Icon className="h-5 w-5 text-champagne-dark dark:text-champagne" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-foreground">{link.label}</p>
-                    <p className="text-sm text-ink-muted">{count} items</p>
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-ink-faint transition-transform group-hover:translate-x-1" />
-                </Link>
-              </motion.div>
-            );
-          })}
-        </div>
+                  <Link
+                    href={link.href}
+                    className="group flex items-center gap-4 rounded-3xl border border-border/60 bg-surface-elevated p-5 shadow-soft transition-all hover:border-champagne/40 hover:shadow-medium"
+                  >
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-champagne/15">
+                      <Icon className="h-5 w-5 text-champagne-dark dark:text-champagne" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-foreground">{link.label}</p>
+                      <p className="text-sm text-ink-muted">{link.count} items</p>
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-ink-faint transition-transform group-hover:translate-x-1" />
+                  </Link>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
 
-        {recentOrder && (
+        {recentOrder ? (
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
@@ -102,19 +130,25 @@ export function AccountOverview() {
               <div>
                 <p className="text-sm font-medium text-foreground">{recentOrder.orderNumber}</p>
                 <p className="text-xs text-ink-muted">
-                  {new Date(recentOrder.placedAt).toLocaleDateString('en-IN', {
+                  {new Date(recentOrder.createdAt).toLocaleDateString('en-IN', {
                     day: 'numeric',
                     month: 'short',
                     year: 'numeric',
                   })}{' '}
-                  · {recentOrder.itemCount} items
+                  · {recentOrder.items.length} items
                 </p>
               </div>
               <p className="font-display text-lg text-foreground">
-                {formatPrice(recentOrder.total)}
+                {formatPrice(recentOrder.totalAmount)}
               </p>
             </div>
           </motion.div>
+        ) : (
+          !loading && (
+            <p className="text-center text-sm text-ink-muted">
+              No orders yet. New orders will appear here after checkout.
+            </p>
+          )
         )}
       </div>
     </AccountShell>

@@ -270,4 +270,46 @@ export const userService = {
     api.get<ApiResponse<{ items: AdminOrder[]; pagination: Pagination }>>('/users/me/orders', {
       params,
     }),
+
+  getMyAddresses: () =>
+    api.get<ApiResponse<{ addresses: AccountAddressDto[] }>>('/users/me/addresses'),
+
+  createAddress: (data: AddressPayload) =>
+    api.post<ApiResponse<{ address: AccountAddressDto }>>('/users/me/addresses', data),
+
+  updateAddress: (id: string, data: Partial<AddressPayload>) =>
+    api.patch<ApiResponse<{ address: AccountAddressDto }>>(`/users/me/addresses/${id}`, data),
+
+  setDefaultAddress: (id: string) =>
+    api.post<ApiResponse<{ address: AccountAddressDto }>>(`/users/me/addresses/${id}/default`),
+
+  deleteAddress: (id: string) =>
+    api.delete<ApiResponse<{ id: string }>>(`/users/me/addresses/${id}`),
 };
+
+export interface AccountAddressDto {
+  id: string;
+  label: string;
+  type: string;
+  firstName: string;
+  lastName: string;
+  street: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  country: string;
+  phone: string;
+  isDefault: boolean;
+}
+
+export interface AddressPayload {
+  firstName: string;
+  lastName: string;
+  street: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  country?: string;
+  phone?: string;
+  isDefault?: boolean;
+}

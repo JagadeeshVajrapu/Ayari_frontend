@@ -14,6 +14,8 @@ import { OrderSummaryCard } from './order-summary-card';
 import { PaymentInfoCard } from './payment-info-card';
 import { DeliveryAddressCard } from './delivery-address-card';
 import { ConnectionStatusBadge } from './connection-status-badge';
+import { Button } from '@/components/ui/button';
+import { api } from '@/services/auth.service';
 import type { NotificationRealtimePayload } from '@/features/tracking/types/socket.types';
 
 interface OrderTrackingViewProps {
@@ -65,7 +67,34 @@ export function OrderTrackingView({ orderId }: OrderTrackingViewProps) {
         <div className="container-premium space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <TrackingHeader tracking={tracking} />
-            <ConnectionStatusBadge status={connectionStatus} />
+            <div className="flex flex-wrap items-center gap-2">
+              <ConnectionStatusBadge status={connectionStatus} />
+              {tracking.shipment?.trackingUrl && (
+                <Button size="sm" variant="outline" asChild>
+                  <a href={tracking.shipment.trackingUrl} target="_blank" rel="noopener noreferrer">
+                    Track Shipment
+                  </a>
+                </Button>
+              )}
+              <Button
+                size="sm"
+                variant="outline"
+                type="button"
+                onClick={async () => {
+                  try {
+                    const response = await api.get(`/users/me/orders/${orderId}/invoice`, {
+                      responseType: 'text',
+                    });
+                    const blob = new Blob([response.data as string], { type: 'text/html' });
+                    window.open(URL.createObjectURL(blob), '_blank', 'noopener,noreferrer');
+                  } catch {
+                    // ignore — user can retry
+                  }
+                }}
+              >
+                Download Invoice
+              </Button>
+            </div>
           </div>
 
           <div className="grid gap-6 lg:grid-cols-3 lg:gap-8">

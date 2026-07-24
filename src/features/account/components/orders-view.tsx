@@ -91,6 +91,32 @@ export function OrdersView() {
                 </div>
               ))}
             </div>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/orders/${order.id}/tracking`}>Track Shipment</Link>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                type="button"
+                onClick={async () => {
+                  try {
+                    const { api } = await import('@/services/auth.service');
+                    const response = await api.get(`/users/me/orders/${order.id}/invoice`, {
+                      responseType: 'text',
+                    });
+                    const blob = new Blob([response.data as string], { type: 'text/html' });
+                    const url = URL.createObjectURL(blob);
+                    window.open(url, '_blank', 'noopener,noreferrer');
+                  } catch {
+                    // ignore — user can retry
+                  }
+                }}
+              >
+                Download Invoice
+              </Button>
+            </div>
           </motion.div>
         ))}
 

@@ -204,6 +204,35 @@ export function AdminShipmentDetailView({ shipmentId }: AdminShipmentDetailViewP
     }
   };
 
+  const runShiprocket = async (
+    action: 'sync' | 'pickup' | 'label' | 'refresh' | 'cancel' | 'return',
+  ) => {
+    if (!shipment) return;
+    setActionLoading(action);
+    setError('');
+    try {
+      const updated =
+        action === 'sync'
+          ? await shipmentAdminService.syncShiprocket(shipment.id)
+          : action === 'pickup'
+            ? await shipmentAdminService.requestPickup(shipment.id)
+            : action === 'label'
+              ? await shipmentAdminService.generateLabel(shipment.id)
+              : action === 'refresh'
+                ? await shipmentAdminService.refreshTracking(shipment.id)
+                : action === 'cancel'
+                  ? await shipmentAdminService.cancelShiprocket(shipment.id)
+                  : await shipmentAdminService.createReturn(shipment.id);
+      setShipment(updated);
+      trackingService.invalidateCache(shipment.orderId);
+      await load();
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handleAssignCourier = async () => {
     if (!shipment || !selectedCourier) return;
     setActionLoading('ASSIGN_COURIER');
@@ -370,11 +399,149 @@ export function AdminShipmentDetailView({ shipmentId }: AdminShipmentDetailViewP
           </motion.div>
         )}
 
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-2xl border border-border/60 bg-card/50 p-4"
+        >
+          <p className="mb-3 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+            Documents & Shiprocket
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={!!actionLoading}
+              onClick={() => void shipmentAdminService.openInvoice(shipment.id)}
+            >
+              View Invoice
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={!!actionLoading}
+              onClick={() => void shipmentAdminService.openInvoice(shipment.id)}
+            >
+              Download Invoice
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={!!actionLoading}
+              onClick={() => void shipmentAdminService.openInvoice(shipment.id)}
+            >
+              Print Invoice
+            </Button>
+            {shipment.shippingLabelUrl ? (
+              <>
+                <Button size="sm" variant="outline" asChild>
+                  <a href={shipment.shippingLabelUrl} target="_blank" rel="noopener noreferrer">
+                    View Shipping Label
+                  </a>
+                </Button>
+                <Button size="sm" variant="outline" asChild>
+                  <a href={shipment.shippingLabelUrl} download target="_blank" rel="noopener noreferrer">
+                    Download Shipping Label
+                  </a>
+                </Button>
+                <Button size="sm" variant="outline" asChild>
+                  <a href={shipment.shippingLabelUrl} target="_blank" rel="noopener noreferrer">
+                    Print Shipping Label
+                  </a>
+                </Button>
+              </>
+            ) : (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={!!actionLoading || !shipment.shiprocketShipmentId}
+                onClick={() => void runShiprocket('label')}
+              >
+                {actionLoading === 'label' ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : null}
+                Generate Shipping Label
+              </Button>
+            )}
+            {!shipment.shiprocketOrderId && (
+              <Button
+                size="sm"
+                disabled={!!actionLoading}
+                onClick={() => void runShiprocket('sync')}
+              >
+                {actionLoading === 'sync' ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : null}
+                Create Shiprocket Shipment
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={!!actionLoading || !shipment.shiprocketShipmentId}
+              onClick={() => void runShiprocket('pickup')}
+            >
+              {actionLoading === 'pickup' ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : null}
+              Request Pickup
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={!!actionLoading}
+              onClick={() => void runShiprocket('refresh')}
+            >
+              {actionLoading === 'refresh' ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : null}
+              Refresh Tracking
+            </Button>
+            {shipment.trackingUrl && (
+              <Button size="sm" variant="outline" asChild>
+                <a href={shipment.trackingUrl} target="_blank" rel="noopener noreferrer">
+                  Track Shipment
+                </a>
+              </Button>
+            )}
+            {shipment.shiprocketOrderId && shipment.status !== 'CANCELLED' && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-red-500/40 text-red-600"
+                disabled={!!actionLoading}
+                onClick={() => void runShiprocket('cancel')}
+              >
+                Cancel Shipment
+              </Button>
+            )}
+            {['DELIVERED', 'OUT_FOR_DELIVERY', 'RETURNED'].includes(shipment.status) && (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={!!actionLoading}
+                onClick={() => void runShiprocket('return')}
+              >
+                Create Return
+              </Button>
+            )}
+            {shipment.order.payment?.status === 'CAPTURED' && (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={!!actionLoading}
+                onClick={() => void runAction('INITIATE_REFUND')}
+              >
+                Refund
+              </Button>
+            )}
+          </div>
+          {(shipment.shiprocketOrderId || shipment.awbNumber) && (
+            <p className="mt-3 text-xs text-muted-foreground">
+              SR Order: {shipment.shiprocketOrderId ?? '—'} · SR Shipment:{' '}
+              {shipment.shiprocketShipmentId ?? '—'} · AWB: {shipment.awbNumber ?? '—'}
+            </p>
+          )}
+        </motion.div>
+
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="space-y-4 lg:col-span-1">
             <InfoSection title="Order Information" icon={<Package className="h-4 w-4" />}>
               <InfoRow label="Order #" value={shipment.orderNumber} />
               <InfoRow label="Order Status" value={shipment.order.status} />
+              <InfoRow label="Shipment Status" value={shipment.status} />
               <InfoRow
                 label="Placed"
                 value={shipment.order.placedAt ? formatDateTime(shipment.order.placedAt).date : '—'}
@@ -403,6 +570,9 @@ export function AdminShipmentDetailView({ shipmentId }: AdminShipmentDetailViewP
             <InfoSection title="Courier Details" icon={<Truck className="h-4 w-4" />}>
               <InfoRow label="Courier" value={shipment.courierName} />
               <InfoRow label="Tracking #" value={shipment.trackingNumber} mono />
+              <InfoRow label="AWB" value={shipment.awbNumber ?? '—'} mono />
+              <InfoRow label="Pickup Status" value={shipment.pickupStatus ?? 'NOT_REQUESTED'} />
+              <InfoRow label="Delivery Status" value={shipment.deliveryStatus ?? '—'} />
               <InfoRow
                 label="Est. Delivery"
                 value={new Date(shipment.estimatedDelivery).toLocaleDateString('en-IN')}

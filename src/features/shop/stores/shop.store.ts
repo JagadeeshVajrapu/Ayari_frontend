@@ -141,6 +141,18 @@ export const useShopStore = create<ShopState>()(
     }),
     {
       name: 'ayari-shop',
+      version: 2,
+      migrate: (persisted) => {
+        // Clear stale local cart/wishlist history after account data reset
+        const state = (persisted ?? {}) as Partial<ShopState>;
+        return {
+          wishlist: [],
+          compare: [],
+          cart: [],
+          appliedCoupon: null,
+          shippingMethod: state.shippingMethod ?? 'standard',
+        };
+      },
       partialize: (state) => ({
         wishlist: state.wishlist,
         compare: state.compare,

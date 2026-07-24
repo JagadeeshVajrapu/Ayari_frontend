@@ -186,6 +186,14 @@ export interface AdminShipmentDetail {
   }>;
   statusHistory?: ShipmentStatusHistory[];
   trackingEvents?: ShipmentTrackingEvent[];
+  shiprocketOrderId?: string | null;
+  shiprocketShipmentId?: string | null;
+  awbNumber?: string | null;
+  shippingLabelUrl?: string | null;
+  pickupStatus?: string | null;
+  deliveryStatus?: string | null;
+  deliveredAt?: string | null;
+  invoiceUrl?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -306,6 +314,45 @@ export const shipmentAdminService = {
     api
       .post<ApiResponse<{ shipment: AdminShipmentDetail }>>(`/admin/shipments/${id}/notes`, data)
       .then((res) => res.data.data.shipment),
+
+  syncShiprocket: (id: string) =>
+    api
+      .post<ApiResponse<{ shipment: AdminShipmentDetail }>>(`/admin/shipments/${id}/shiprocket/sync`)
+      .then((res) => res.data.data.shipment),
+
+  requestPickup: (id: string) =>
+    api
+      .post<ApiResponse<{ shipment: AdminShipmentDetail }>>(`/admin/shipments/${id}/shiprocket/pickup`)
+      .then((res) => res.data.data.shipment),
+
+  generateLabel: (id: string) =>
+    api
+      .post<ApiResponse<{ shipment: AdminShipmentDetail }>>(`/admin/shipments/${id}/shiprocket/label`)
+      .then((res) => res.data.data.shipment),
+
+  refreshTracking: (id: string) =>
+    api
+      .post<ApiResponse<{ shipment: AdminShipmentDetail }>>(
+        `/admin/shipments/${id}/shiprocket/refresh-tracking`,
+      )
+      .then((res) => res.data.data.shipment),
+
+  cancelShiprocket: (id: string) =>
+    api
+      .post<ApiResponse<{ shipment: AdminShipmentDetail }>>(`/admin/shipments/${id}/shiprocket/cancel`)
+      .then((res) => res.data.data.shipment),
+
+  createReturn: (id: string) =>
+    api
+      .post<ApiResponse<{ shipment: AdminShipmentDetail }>>(`/admin/shipments/${id}/shiprocket/return`)
+      .then((res) => res.data.data.shipment),
+
+  openInvoice: async (id: string) => {
+    const response = await api.get(`/admin/shipments/${id}/invoice`, { responseType: 'text' });
+    const blob = new Blob([response.data as string], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank', 'noopener,noreferrer');
+  },
 
   getCouriers: () =>
     api

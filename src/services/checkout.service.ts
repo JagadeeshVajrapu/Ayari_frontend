@@ -15,6 +15,7 @@ export interface CreatePaymentOrderPayload {
   shippingMethod: ShippingMethod;
   orderNotes?: string;
   couponCode?: string;
+  saveAddress?: boolean;
 }
 
 export interface RazorpayOrderResponse {

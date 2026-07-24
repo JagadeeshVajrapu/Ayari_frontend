@@ -93,6 +93,7 @@ export function CheckoutPage() {
     shippingMethod,
     orderNotes: data.orderNotes,
     couponCode: appliedCoupon?.code,
+    saveAddress: data.saveAddress,
   });
 
   const redirectToSuccess = (
